@@ -6,7 +6,9 @@ require 'grit'
 require 'yaml'
 require 'pp'
 
-$CONFIG=YAML.load File.read("config.yaml")
+ROOT= File.dirname(File.expand_path __FILE__)
+CONFIG_FILE= File.join ROOT, "config.yaml"
+$CONFIG=YAML.load File.read(CONFIG_FILE)
 pp $CONFIG
 
 set :public_folder, File.dirname(__FILE__) + '/views'

@@ -1,9 +1,27 @@
-<h1>Git-build Autobuild System v2</h1>
-<h2><a href="/log.html">Logger</a></h2>
+<div class="hero-unit">
+<h1>Git-Autobuild System v2</h1>
+<p>This is a simple Git-based Autotesting System</p>
+<p>TODO:<br>
+Add backend moniter here
+</p>
+<p class="text-right">by Chen Yuheng 2013</p>
+<p>
+ <a href="https://github.com/chyh1990/autotester_v2" class="btn btn-primary btn-large">
+	Learn more
+</a>
+</p>
+</div>
+
+<hr />
+<h2>Repo Building History:</h2>
+<ul style="font-size: 24px">
+	<% @repos.each do |r| %>
+		<li><a href="/repo/<%= r[:name] %>/"><%= r[:name] %></a></li>
+	<% end %>
+</ul>
 <hr />
 <h2>Pending Tasks:</h2>
 <ul>
 
 </ul>
-<p>by Chen Yuheng 2013</p>
 

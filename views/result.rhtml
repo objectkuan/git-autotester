@@ -45,7 +45,7 @@
        <td><%= c[:id][0..6] %></td>
        <td><%= h c[:author] %></td>
        <td><%= c[:committed_date] %></td>
-       <td><%= h (tr c[:message], 30) %></td>
+       <td><%= h (tr c[:message], 40) %></td>
        </tr>
        <% end %>
        </tbody>
@@ -55,7 +55,7 @@
 <% @report[:result].each do |e| %>
        <h3 id="<%= e[:name] %>"><%= e[:name] %></h3>
 	<pre>
-<% e[:result][:output].each do |line| %><%= h line.chomp %><br><% end %></pre>
+<% e[:result][:output].each do |line| %><%= ol line %><br><% end %></pre>
 	<hr>
 <% end %>
 

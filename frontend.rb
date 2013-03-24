@@ -6,6 +6,7 @@ require 'grit'
 require 'yaml'
 require 'pp'
 
+YAML::ENGINE.yamler='syck'
 ROOT= File.dirname(File.expand_path __FILE__)
 CONFIG_FILE= File.join ROOT, "config.yaml"
 $CONFIG=YAML.load File.read(CONFIG_FILE)
@@ -24,6 +25,13 @@ helpers do
 		return "nil" unless text
 		return text if text.length < len
 		text[0..len-3]+"..."
+	end
+	def ol(line)
+		t = line.chomp
+		return "<span class=\"line-warning\">#{h t}</span>" if t =~ /\bwarning\b/i
+		return "<span class=\"line-error\">#{h t}</span>" if t =~ /\b(error|fail|failed)\b/i
+		return "<span class=\"line-ok\">#{h t}</span>" if t =~ /\bok\b/i
+		h t
 	end
 end
 

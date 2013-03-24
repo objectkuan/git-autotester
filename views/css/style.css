@@ -1,0 +1,11 @@
+.line-warning {
+	background-color: yellow;
+}
+
+.line-error {
+	background-color: #ff8c00;
+}
+
+.line-ok {
+	background-color: #7fff00;
+}

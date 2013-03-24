@@ -216,6 +216,7 @@ class CompileRepo
 
 			begin
 				#force checkout here
+				LOGGER.info "Checkout #{@name} #{ref.name}:#{commitid}"
 				@repo.git.checkout( {:f=>true}, commitid)
 			rescue Grit::Git::CommandFailed
 				error "Fail to checkout #{commitid}"

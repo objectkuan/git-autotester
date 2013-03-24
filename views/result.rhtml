@@ -54,7 +54,7 @@
 <h2>Output</h2>
 <% @report[:result].each do |e| %>
        <h3 id="<%= e[:name] %>"><%= e[:name] %></h3>
-	<pre class="pre-scrollable">
+	<pre>
 <% e[:result][:output].each do |line| %><%= h line.chomp %><br><% end %></pre>
 	<hr>
 <% end %>

@@ -2,16 +2,18 @@
 <table class="table table-striped">
 	<thead>
 		<th>Date</th>
+		<th>Ref</th>
 		<th>Commit</th>
 		<th>Result</th>
 	</thead>
 	<tbody>
 	<% @list.each do |e| %>
-		<tr <%= 'class="error"' unless e[2] == "OK"  %> id="<%= e.last %>">
-		<td><%= Time.at(e[1].to_i).to_datetime.rfc2822 %></td>
-		<td><a href="/repo/<%= @repo %>/<%= e.last %>"><%= e[0] %></a></td>
+		<tr <%= 'class="error"' unless e[:ok] == "OK"  %> id="<%= e[:ok] %>">
+		<td><%= Time.at(e[:timestamp]).to_datetime.rfc2822 %></td>
+		<td><%= e[:ref][0] %></td>
+		<td><a href="/repo/<%= @repo %>/<%= e[:tid] %>"><%= e[:head][0..6] %></a></td>
 		<td>
-		<% if e[2] == "OK" %>
+		<% if e[:ok] == "OK" %>
 			<font color=green>OK</font>
 		<% else %>
 			<font color=red>FAIL</font>

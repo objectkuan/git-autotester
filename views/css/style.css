@@ -9,3 +9,11 @@
 .line-ok {
 	background-color: #7fff00;
 }
+
+.repo-list {
+	font-size: 24px
+}
+
+.repo-list li {
+	padding-bottom: 7px
+}

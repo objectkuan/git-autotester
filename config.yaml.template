@@ -1,7 +1,13 @@
 :bind: "0.0.0.0"
 :port: 4567
 
-:sleep: 15
+:sleep: 30
+:git_timeout: 20
+
+:ping:
+        :backend_addr: "127.0.0.1"
+        :frontend_addr: "127.0.0.1"
+        :port: 3579
 
 :repo_abspath: "/home/chenyh/os/tmp"
 :result_abspath: "/home/chenyh/os/tmp/result"

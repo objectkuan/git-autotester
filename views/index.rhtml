@@ -1,3 +1,6 @@
+<script type="text/javascript">
+	setTimeout("location.reload()",30000);
+</script>
 <div class="hero-unit">
 <h1>Git-Autobuild System v2</h1>
 <p>This is a simple Git-based Autotesting System</p>
@@ -14,14 +17,12 @@ Add backend moniter here
 
 <hr />
 <h2>Repo Building History:</h2>
-<ul style="font-size: 24px">
+<ul class="repo-list">
 	<% @repos.each do |r| %>
 		<li><a href="/repo/<%= r[:name] %>/"><%= r[:name] %></a></li>
 	<% end %>
 </ul>
 <hr />
-<h2>Pending Tasks:</h2>
-<ul>
-
-</ul>
+<h2>Backend Status:</h2>
+<pre><% @status_line.each do |l| %><%= ol l %><br><% end %></pre>
 

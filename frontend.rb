@@ -5,6 +5,8 @@ require 'sinatra'
 require 'grit'
 require 'yaml'
 require 'pp'
+require 'socket'
+require 'timeout'
 
 YAML::ENGINE.yamler='syck'
 ROOT= File.dirname(File.expand_path __FILE__)
@@ -27,29 +29,73 @@ helpers do
 		text[0..len-3]+"..."
 	end
 	def ol(line)
-		t = line.chomp
-		return "<span class=\"line-warning\">#{h t}</span>" if t =~ /\bwarning\b/i
-		return "<span class=\"line-error\">#{h t}</span>" if t =~ /\b(error|fail|failed)\b/i
-		return "<span class=\"line-ok\">#{h t}</span>" if t =~ /\bok\b/i
-		h t
+		t = h line.chomp
+		return "<span class=\"line-warning\">#{t}</span>" if t =~ /\bwarning\b/i
+		return "<span class=\"line-error\">#{t}</span>" if t =~ /\b(error|fail|failed)\b/i
+		return "<span class=\"line-ok\">#{t}</span>" if t =~ /\bok\b/i
+		t
 	end
 end
 
-def check_repo repo
-	return false unless repo =~ /[a-zA-A_]+/
-	return false unless File.directory? File.join($CONFIG[:repo_abspath], repo)
-	$CONFIG[:repos].any? {|e| e[:name] == repo }
+class ReportCache
+	@@cache = Hash.new
+
+	class << self
+
+		def check_repo(repo)
+			return false unless repo =~ /[a-zA-A_]+/
+			$CONFIG[:repos].any? {|e| e[:name] == repo }
+		end
+
+		def [](repo)
+			@@cache[repo]
+		end
+
+		def check_and_update(repo)
+			return nil unless check_repo repo
+			unless File.directory? File.join($CONFIG[:repo_abspath], repo)
+				@@cache.delete repo
+				return nil
+			end
+
+			@@cache[repo] = Hash.new
+			fs = Hash.new
+
+			dir = File.join($CONFIG[:result_abspath], repo)
+			Dir.foreach dir do |f|
+				fs[f[0..-6]] = :f if f =~ /^[a-z0-9]{40}-\d+-[A-Z]+-\d+\.yaml$/
+			end
+			@@cache[repo].delete_if { |k,v| fs[k].nil? }
+			fs.each do |k,v|
+				next if @@cache[repo][k]
+				file = File.join($CONFIG[:result_abspath], repo, k+".yaml")
+				report = YAML.load File.read(file) rescue nil
+				next if report.nil?
+				report[:ok] ||= k.include?("OK") ? "OK" : "FAIL"
+				report[:timestamp] ||= k.split('-')[1].to_i
+				report[:ref] ||= ["UNKNOWN", ""]
+				report[:result] ||= []
+				report[:filter_commits] ||= []
+				report[:tid] = k
+				report[:head] ||= k.split('-')[0]
+
+				@@cache[repo][k] = report
+			end
+			@@cache[repo]
+		end
+	end
+
+	private
+	def initialize
+	end
 end
 
 get '/repo/:repo/' do
 	repo = params[:repo]
-	halt 404 unless check_repo repo
-	dir = File.join($CONFIG[:result_abspath], repo)
-	@list = []
-	Dir.foreach dir do |f|
-		@list << f[0..-6] if f =~ /^[a-z0-9]{40}-\d+-[A-Z]+-\d+\.yaml$/
-	end
-	@list.map! {|e| r = e.split '-'; r[1] = r[1].to_i; r << e}.sort_by!{|e| e[1]}.reverse!
+	halt 404 unless ReportCache.check_and_update repo
+	cache = ReportCache[repo]
+	halt 404 if cache.nil?
+	@list = cache.sort_by {|k,v| v[:timestamp]}.reverse.map{|e| e[1]}
 	@repo = repo
 	erb :testlist
 end
@@ -57,15 +103,11 @@ end
 get '/repo/:repo/:tid' do
 	repo = params[:repo]
 	tid = params[:tid]
-	halt 404 unless check_repo repo
-	halt 404 unless tid =~ /^[a-z0-9]{40}-\d+-[A-Z]+-\d+$/
-	file = File.join($CONFIG[:result_abspath], repo, tid+".yaml")
-	halt 404 unless File.file? file
-	@report = YAML.load File.read(file) rescue halt 404, 'fail to read file'
-	@report[:ref] ||= ["UNKNOWN", ""]
-	@report[:result] ||= []
-	@report[:filter_commits] ||= []
-	@ok = tid.include? "OK"
+	halt 404 unless ReportCache.check_repo repo
+	cache = ReportCache[repo]
+	halt 404 if cache.nil?
+	@report = cache[tid]
+	halt 404 if @report.nil?
 	@repo = repo
 	erb :result
 end
@@ -75,6 +117,22 @@ get '/about' do
 end
 
 get '/' do
+	@status_line = []
+	begin
+		Timeout.timeout(2) do
+			s = TCPSocket.open($CONFIG[:ping][:frontend_addr], $CONFIG[:ping][:port]) 
+			while l = s.gets 
+				@status_line << l.chomp
+			end
+			s.close
+		end
+	rescue Timeout::Error
+		@status_line << "ERROR: Timeout to connect to backend!"
+	rescue StandardError => e
+		@status_line << "ERROR: Failed to connect to backend!"
+	end
+
 	@repos = $CONFIG[:repos]
 	erb :index, :locals => {}
 end
+

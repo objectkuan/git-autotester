@@ -307,7 +307,7 @@ class CompileRepo
 
 			if last_test_commit
 				# old..new
-				new_commits = @repo.commits_between last_test_commit, commitid
+				new_commits = @repo.commits_between(last_test_commit, commitid).reverse
 			else
 				LOGGER.info "#{ref.name} new branch?"
 				new_commits = @repo.commits commitid, 30

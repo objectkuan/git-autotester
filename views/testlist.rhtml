@@ -8,7 +8,7 @@
 	</thead>
 	<tbody>
 	<% @list.each do |e| %>
-		<tr <%= 'class="error"' unless e[:ok] == "OK"  %> id="<%= e[:ok] %>">
+		<tr <%= 'class="error"' unless e[:ok] == "OK"  %> id="<%= e[:tid] %>">
 		<td><%= Time.at(e[:timestamp]).to_datetime.rfc2822 %></td>
 		<td><%= e[:ref][0] %></td>
 		<td><a href="/repo/<%= @repo %>/<%= e[:tid] %>"><%= e[:head][0..6] %></a></td>

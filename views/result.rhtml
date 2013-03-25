@@ -1,8 +1,8 @@
 <h1>Test Result: 
-	<% if @report[:ok] %>
+	<% if @report[:ok]=="OK" %>
 		<font color=green>OK</font>
 	<% else %>
-		<font color=red>FAIL</font>
+		<font color=red><%= @report[:ok] %></font>
 	<% end %>
 </h1>
 <h2><a href="/repo/<%= @repo %>/"><%= @repo %></a> <small><%= h "#{@report[:ref].first}" %></small></h2>

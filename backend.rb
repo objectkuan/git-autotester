@@ -145,7 +145,7 @@ class Grit::Commit
 		 :committer => committer.simplify, 
 		 :authored_date => authored_date.to_s,
 		 :committed_date => committed_date.to_s,
-		 :message => message.split('\n').first
+		 :message => message.split("\n").first
 		}
 	end
 end

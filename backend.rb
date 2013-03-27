@@ -8,6 +8,7 @@ require 'logger'
 require 'time'
 require 'timeout'
 require 'socket'
+require 'mail'
 
 ROOT= File.dirname(File.expand_path __FILE__)
 CONFIG_FILE= File.join ROOT, "config.yaml"
@@ -221,6 +222,7 @@ class CompileRepo
 		@name = config[:name]
 		fail "REPO name is null" if @name.nil?
 		@url = config[:url]
+		@nomail = config[:nomail]
 
 		@blacklist = config[:blacklist] || []
 		@blacklist.map! {|e| "origin/" + e}	
@@ -246,6 +248,41 @@ class CompileRepo
 		@repo.remotes.each { |r| puts "  #{r.name} #{r.commit.id}" }
 	end
 
+	def send_mail(ref, result, report_file = nil)
+		return if $CONFIG[:mail].nil?
+		return if @nomail
+		LOGGER_VERBOSE.info "send_mail to #{ref.commit.author.email}"
+		conf = $CONFIG[:mail]
+		dm = $CONFIG[:domain_name] || "localhost"
+		b = []
+		b << "Hi, #{ref.commit.author.name}:"
+		b << "Here is a report from autotest system, please visit: http://#{dm}"
+		b << "#{Time.now}"
+		b << "===================================\n"
+		b << YAML.dump(result[:ref])
+		b << YAML.dump(result[:filter_commits]) << "\n"
+		b << "===================================\n"
+		result[:result].each do |r|
+			b << "#{r[:name]}    #{r[:result][:status]}"
+			b << "Time: #{r[:time]}"
+			b << "---"
+			r[:result][:output].each {|l| b << l }
+			b << "===================================\n"
+		end
+		b << "\nFrom Git autotest system"
+		repo_name = @name
+
+		mail = Mail.new do
+			from conf[:from]
+			to   ref.commit.author.email
+			cc   conf[:cc] || []
+			subject "[Autotest][#{result[:ok]}] #{repo_name}:#{ref.name} #{ref.commit.id}"
+			body b.join("\n")
+			add_file report_file if report_file
+		end
+		mail.deliver! rescue LOGGER.error "Fail to send mail to #{ref.commit.author.simplify}"
+	end
+
 	def run_test_for_commits(ref, new_commits)
 
 		LOGGER.info "Repo #{@name} :OK, let's test branch #{ref.name}:#{ref.commit.id}"
@@ -262,6 +299,8 @@ class CompileRepo
 		File.open(report_name, "w") do |io|
 			YAML.dump report, io
 		end
+
+		send_mail ref, report, report_name
 
 	end
 

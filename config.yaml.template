@@ -13,6 +13,10 @@
 :mail:
         :from: "autotest@os.cs.tsinghua.edu.cn"
         :cc:   ['chyh1990@gmail.com']
+        :daily_to: ['ucore_dev1@googlegroups.com', 'chyh1990@gmail.com']
+
+:jobs:
+        :daily_report: ["00:00"]
 
 :repo_abspath: "/home/chenyh/os/tmp"
 :result_abspath: "/home/chenyh/os/tmp/result"

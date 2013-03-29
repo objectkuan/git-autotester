@@ -259,6 +259,10 @@ class CompileRepo
 		b << "Here is a report from autotest system, please visit: http://#{dm}"
 		b << "#{Time.now}"
 		b << "===================================\n"
+		b << "ENVIRONMENT"
+		env = File.read(File.join(ROOT, "env.txt")) rescue "Unknown"
+		b << env
+		b << "===================================\n"
 		b << YAML.dump(result[:ref])
 		b << YAML.dump(result[:filter_commits]) << "\n"
 		b << "===================================\n"

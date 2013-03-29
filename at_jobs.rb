@@ -38,7 +38,7 @@ class Jobs
 						today_list << fn if Time.now.to_i - fn.split('-')[1].to_i < 1.day
 					end
 				end
-				pp today_list
+				#pp today_list
 				b = Array.new
 				dm = $CONFIG_FILE[:domain_name] || "localhost"
 				b << "Hi! Daily report for repo #{r[:name]}"

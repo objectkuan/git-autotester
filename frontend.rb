@@ -131,6 +131,7 @@ get '/' do
 	rescue StandardError => e
 		@status_line << "ERROR: Failed to connect to backend!"
 	end
+	@env = File.read(File.join(ROOT, "env.txt")) rescue "Unknown"
 
 	@repos = $CONFIG[:repos]
 	erb :index, :locals => {}

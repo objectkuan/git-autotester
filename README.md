@@ -1,70 +1,73 @@
-autotester_v2
-=============
-
-Running
--------
-
-You should install RVM first (ruby 1.9.3)
-
-* bundle install
-* ./frontend.rb
-* ./backend.rb
-* clockwork ./at_jobs.rb
-
-Hint: if you install rerun (gem install rerun), use `rerun ./frontend.rb' to
-auto refresh your website
-
-About Autobuildv2
----------
+About Autobuild
+===========
 
 This Autobuild System is designed to undertake the building and testing 
 process automatically. It depends on the following packages:
 
-+ Ruby1.9 with several gems
++ Python2.7
 + Git
 + Bash
 
-Features
----------
-This version includes many new features:
 
-+ frontend & backend separation
-+ mailing
-+ multi-repo support
-+ multi-branch support
-+ highly configurable
-+ syntax highlight
+Deployment
+============
 
-When someone pushes commits to the Repo, it will trigger the auto-building and auto-testing.
-This means a Git fetch action and then the *autobuild.sh* and *autotest.sh* will be run.
-You should make sure these two scripts are placed in the root of your target Repo properly.
+Use uCore for example. 
 
-Note that the backend uses polling to fetch your newest commits.
+1. First, you must create a working directory.
+
+*mkdir work*
+
+*cd work*
+
+2. Then, download the git-build.py from my [Repo](https://github.com/chyh1990/autobuild_tester),
+put it into *work*.
+
+3. Clone your Repo which you wanted to be built automatically.
+Make sure using the *Readonly* URL.
+
+*git clone https://github.com/chyh1990/autobuild_tester*
+
+4. Configure the git-build.py, see the following section.
+
+5. Setup the Service Hook in Github.
+
+Click Admin -> Service Hooks -> WebHook URLs.
 
 
 Configuration
-------------
-The configuration file is called `config.yaml', you can refer to
-config.yaml.template for more details. Please note that you must use *absolute
-path* for your repos and results.
+===========
+To make it simple, all options are in gitbuild_config.py, and no extra configure files.
 
-Note that you not need to manually clone the repos, the backend will do it for
-you at the first run.
++ PORT_NUMBER: listening port of the HTTP server
++ CLIENT_IPS:  only POST requests from these hosts will trigger the auto-build.
++ REPO_NAME:   the name of your target Repo
++ LOCAL_REPO:  the path of its local clone
 
-Most options are self-explanatory, here are the non-trival ones:
-
-+ ping: the frontend checks the alive signal from backend with a socket. This
-  options setup their IP address and port.
-+ repos.blacklist: the branches that you do not want to be auto-tested
-+ repos.nomail: do NOT send email for this repo's test results
 
 Testing
-----------
-Run the backend and frontend. 
-Then open the web browser, goto 
+===========
+Run the python server:
 
+*nohup python git-build.py*
+
+Then open the web browser, goto 
 http://127.0.0.1:PORT_NUMBER/
 
 You should be able to see the start page.
+
+When someone pulls commits to the Repo, it will trigger the auto-building and auto-testing.
+This means a Git fetch action and then the *autobuild.sh* and *autotest.sh* will be run.
+You should make sure these two scripts are placed in the root of your target Repo properly.
+
+After you pull your commits to Github, Github will inform our HTTP server.
+
+*NOTE: Only commits whose message starts with AUTOTEST will trigger a rebuild and re-test.*
+
+Example:
+
+git commit -am"AUTOTEST blabla"
+
+git pull
 
 

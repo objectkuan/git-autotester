@@ -223,12 +223,16 @@ class CompileRepo
 		fail "REPO name is null" if @name.nil?
 		@url = config[:url]
 		@nomail = config[:nomail]
+		@mode = config[:mode] || :normal
 
 		@blacklist = config[:blacklist] || []
-		@blacklist.map! {|e| "origin/" + e}	
+		#@blacklist.map! {|e| "origin/" + e}
+		@blacklist.map! {|e| /#{e}/}
+		@whitelist = config[:whitelist] || []
+		@whitelist.map! {|e| /#{e}/}
 
-		@build_timeout_s = config[:build_timeout_min] * 60 || 60
-		@run_timeout_s = config[:run_timeout_min] * 60 || 60
+		@build_timeout_s = (config[:build_timeout_min] || 1) * 60
+		@run_timeout_s = (config[:run_timeout_min] || 1) * 60
 		@filters = config[:filters] || []
 		@result_dir = File.join $CONFIG[:result_abspath], @name
 		
@@ -308,6 +312,11 @@ class CompileRepo
 
 	end
 
+	def white_black_list(refname)
+		return @whitelist.any? {|r| refname =~ r} unless @whitelist.empty?
+		!(@blacklist.any?{|r| refname =~ r})
+	end
+
 	def start_test
 		#we are in repo dir
 		origin = @repo.remote_list.first
@@ -328,9 +337,11 @@ class CompileRepo
 		compiled_list = File.readlines(compiled_file).map{|line| line.chomp} rescue []
 
 		new_compiled_list = []
-		@repo.remotes.each do |ref|
+		test_refs = @repo.remotes
+		test_refs.each do |ref|
 			next if ref.name =~ /.+\/HEAD/
-			next if @blacklist.include? ref.name
+			#next if @blacklist.include? ref.name
+			next unless white_black_list ref.name
 
 			next if compiled_list.include? ref.commit.id
 
@@ -398,8 +409,9 @@ def create_all_repo
 	$CONFIG[:repos].each do |r|
 		begin
 			repos[ r[:name] ] = CompileRepo.new r
-		rescue
-			error "#{r[:name]} not available, skip"
+		rescue StandardError => e
+			error "#{r[:name]} #{e} not available, skip"
+			puts e.backtrace
 			next
 		end
 		report_dir = File.join $CONFIG[:result_abspath], r[:name]

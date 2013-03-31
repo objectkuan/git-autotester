@@ -1,7 +1,7 @@
 :bind: "0.0.0.0"
 :port: 4567
 
-:sleep: 10
+:sleep: 5
 :git_timeout: 20
 :domain_name: "os.cs.tsinghua.edu.cn:3100"
 
@@ -17,6 +17,11 @@
 
 :jobs:
         :daily_report: ["00:00"]
+        :automerge:
+                - :url: "/home/chenyh/os/autobuild_tester"
+                  :hours: 1
+                  :upstream: "origin/master"
+                  :branches: ["m2", "m1"]
 
 :repo_abspath: "/home/chenyh/os/tmp"
 :result_abspath: "/home/chenyh/os/tmp/result"
@@ -26,6 +31,15 @@
           :blacklist:
           :build_timeout_min: 10
           :run_timeout_min: 30
+          :nomail: true
           :filters:
                 - [ "ext", [".c", ".h", ".S", ".sh", ".s", ""] ]
+
+        - :name: "autobuild_tester_merge"
+          :url: "/home/chenyh/os/autobuild_tester"
+          :whitelist: [ "automerge-.+" ]
+          :nomail: true
+          :filters:
+                - [ "ext", [".c", ".h", ".S", ".sh", ".s", ""] ]
+
 

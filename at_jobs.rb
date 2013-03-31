@@ -5,6 +5,7 @@ require 'mail'
 require 'logger'
 require 'time'
 require 'yaml'
+require 'grit'
 require 'clockwork'
 require 'pp'
 
@@ -68,6 +69,45 @@ class Jobs
 	end
 end
 
+class AutoMerger
+	def self.merge(params)
+		Grit::Git.git_timeout = $CONFIG_FILE[:git_timeout] || 10
+		fail "url empty" if params[:url].nil?
+		repo = Grit::Repo.new params[:url]
+		upstream = params[:upstream] || "origin/master"
+		repo.git.checkout({:f=>true}, upstream)
+		repo.git.reset({:hard=>true}, "HEAD")
+		repo.remote_list.each do |r|
+			5.times do
+				begin
+					LOGGER.info "fetching #{r}"
+					repo.remote_fetch r
+					break
+				rescue Grit::Git::GitTimeout => e
+					LOGGER.error "timeout #{params[:url]}"
+					sleep 30
+				end
+			end
+		end
+		branchname = "automerge-#{DateTime.now}".tr ":+", "-"
+		ret = repo.git.checkout({:b=>branchname}, upstream)
+		fail "create branch #{branchname}" if repo.head.name != branchname
+		merged_branches = []
+		merged_branches << upstream
+		params[:branches].each do |b|
+			puts "merging #{b}"
+			exitstatus, out, err = repo.git.merge({:process_info=>true, :no_ff=>true, :m=>"#{merged_branches.join(' ')} #{b}"}, b)
+			puts out, err
+			if exitstatus == 0
+				merged_branches << b
+			else
+				repo.git.merge({:abort => true})
+			end
+		end
+		LOGGER.info "Merge #{params[:url]} #{merged_branches.join(' ')} to #{branchname}"
+	end
+end
+
 module Clockwork
 	handler do |job|
 		puts "Running #{job}"
@@ -81,6 +121,17 @@ module Clockwork
 	if $CONFIG_FILE[:jobs][:daily_report]
 		$CONFIG_FILE[:jobs][:daily_report].each do |t|
 			every(1.day, 'daily_report', :at => t)
+		end
+	end
+	if $CONFIG_FILE[:jobs][:automerge]
+		$CONFIG_FILE[:jobs][:automerge].each do |t|
+			every(t[:hours].hour, 'automerge.do') do
+				begin
+					AutoMerger.merge t 
+				rescue StandardError => e
+					LOGGER.error "Fail to merge #{t[:url]}: #{e}"
+				end
+			end
 		end
 	end
 end

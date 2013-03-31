@@ -53,7 +53,7 @@ class ReportCache
 
 		def check_and_update(repo)
 			return nil unless check_repo repo
-			unless File.directory? File.join($CONFIG[:repo_abspath], repo)
+			unless File.directory? File.join($CONFIG[:result_abspath], repo)
 				@@cache.delete repo
 				return nil
 			end

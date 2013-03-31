@@ -2,10 +2,28 @@
 
 OUT="env.txt"
 
+function getversion
+{
+	printf "%-24s" "$1" >> $OUT
+	"$1" --version 2>&1 |head -1 >> $OUT
+}
+
+function getversion1
+{
+	printf "%-24s" "$1" >> $OUT
+	"$1" -version 2>&1 |head -1 >> $OUT
+}
+
+
 uname -s -o -m > $OUT
-gcc --version|head -1 >> $OUT
-arm-eabi-gcc --version|head -1 >>$OUT
-qemu-system-x86_64 --version|head -1 >>$OUT
-emulator-arm -version|head -1 >> $OUT
-gdb --version|head -1 >> $OUT
-python2.6 --version &>> $OUT
+for i in gcc arm-eabi-gcc qemu-system-x86_64 emulator-arm gdb arm-eabi-gdb
+do
+	getversion "$i"
+done
+
+for i in java
+do
+	getversion1 "$i"
+done
+
+cat $OUT

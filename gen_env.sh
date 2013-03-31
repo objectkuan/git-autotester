@@ -16,12 +16,12 @@ function getversion1
 
 
 uname -s -o -m > $OUT
-for i in gcc arm-eabi-gcc qemu-system-x86_64 emulator-arm gdb arm-eabi-gdb
+for i in gcc arm-eabi-gcc qemu-system-x86_64 gdb arm-eabi-gdb
 do
 	getversion "$i"
 done
 
-for i in java
+for i in java emulator-arm
 do
 	getversion1 "$i"
 done

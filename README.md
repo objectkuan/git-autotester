@@ -4,9 +4,10 @@ About Autobuild
 This Autobuild System is designed to undertake the building and testing 
 process automatically. It depends on the following packages:
 
-+ Python2.7
 + Git
 + Bash
++ Exim4 (for mailing)
++ RVM (ruby 1.9.3)
 
 
 Deployment

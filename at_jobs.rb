@@ -45,7 +45,8 @@ class Jobs
 				b << "Hi! Daily report for repo #{r[:name]}"
 				b << "Here is a report from autotest system, please visit: http://#{dm}"
 				b << "#{Time.now}"
-				b << "=====================\n"
+				b << "====================="
+				b << ">>> git clone #{r[:url]}\n"
 				today_list.map {|e| e.split('-')}.sort_by{|e| e[1].to_i}.each do |e|
 					b << "#{e[0]}\t#{e[2]}\t#{Time.at(e[1].to_i)}"
 				end
@@ -74,9 +75,10 @@ class AutoMerger
 		Grit::Git.git_timeout = $CONFIG_FILE[:git_timeout] || 10
 		fail "url empty" if params[:url].nil?
 		repo = Grit::Repo.new params[:url]
+		url = params[:url]
 		upstream = params[:upstream] || "origin/master"
-		repo.git.checkout({:f=>true}, upstream)
-		repo.git.reset({:hard=>true}, "HEAD")
+		repo.git.checkout({:f=>true, :chdir=>url}, upstream)
+		repo.git.reset({:hard=>true, :chdir=>url}, "HEAD")
 		repo.remote_list.each do |r|
 			5.times do
 				begin
@@ -90,18 +92,18 @@ class AutoMerger
 			end
 		end
 		branchname = "automerge-#{DateTime.now}".tr ":+", "-"
-		ret = repo.git.checkout({:b=>branchname}, upstream)
+		ret = repo.git.checkout({:b=>branchname, :chdir=>url}, upstream)
 		fail "create branch #{branchname}" if repo.head.name != branchname
 		merged_branches = []
 		merged_branches << upstream
 		params[:branches].each do |b|
 			puts "merging #{b}"
-			exitstatus, out, err = repo.git.merge({:process_info=>true, :no_ff=>true, :m=>"#{merged_branches.join(' ')} #{b}"}, b)
+			exitstatus, out, err = repo.git.merge({:process_info=>true, :chdir=>url, :no_ff=>true, :m=>"#{merged_branches.join(' ')} #{b}"}, b)
 			puts out, err
 			if exitstatus == 0
 				merged_branches << b
 			else
-				repo.git.merge({:abort => true})
+				repo.git.merge({:abort => true, :chdir=>url})
 			end
 		end
 		LOGGER.info "Merge #{params[:url]} #{merged_branches.join(' ')} to #{branchname}"

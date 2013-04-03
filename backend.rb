@@ -267,6 +267,7 @@ class CompileRepo
 		env = File.read(File.join(ROOT, "env.txt")) rescue "Unknown"
 		b << env
 		b << "===================================\n"
+		b << ">>> git clone #{@url}"
 		b << YAML.dump(result[:ref])
 		b << YAML.dump(result[:filter_commits]) << "\n"
 		b << "===================================\n"

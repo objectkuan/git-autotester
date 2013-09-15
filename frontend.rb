@@ -18,6 +18,14 @@ set :public_folder, File.dirname(__FILE__) + '/views'
 set :bind, $CONFIG[:bind] || '0.0.0.0'
 set :port, $CONFIG[:port] || 4567
 
+$formats = {
+  /(\[ *PASS *\])/ => '<span class="line-ok">\1</span>',
+  /(\[ *! *PASS *! *\])/ => '<span class="line-warning">\1</span>',
+  /(\[ *FAIL *\])/ => '<span class="line-warning">\1</span>',
+  /(\[ *! *FAIL *! *\])/ => '<span class="line-error">\1</span>',
+  /(\[ *!? *BROKEN *!? *\])/ => '<span class="line-error">\1</span>',
+}
+
 helpers do
 	def h(text)
 		Rack::Utils.escape_html(text)
@@ -30,9 +38,9 @@ helpers do
 	end
 	def ol(line)
 		t = h line.chomp
-		return "<span class=\"line-warning\">#{t}</span>" if t =~ /\bwarning\b/i
-		return "<span class=\"line-error\">#{t}</span>" if t =~ /\b(error|fail|failed)\b/i
-		return "<span class=\"line-ok\">#{t}</span>" if t =~ /\bok\b/i
+		$formats.each do |p, s|
+			return t.gsub(p, s) if t =~ p
+		end
 		t
 	end
 end
@@ -70,7 +78,7 @@ class ReportCache
 				next if @@cache[repo][k]
 				file = File.join($CONFIG[:result_abspath], repo, k+".yaml")
 				report = YAML.load File.read(file) rescue nil
-				next if report.nil?
+				next unless report
 				report[:ok] ||= k.include?("OK") ? "OK" : "FAIL"
 				report[:timestamp] ||= k.split('-')[1].to_i
 				report[:ref] ||= ["UNKNOWN", ""]

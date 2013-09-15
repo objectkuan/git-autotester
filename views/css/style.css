@@ -1,13 +1,14 @@
 .line-warning {
-	background-color: yellow;
+	color: #ff7f00;
 }
 
 .line-error {
-	background-color: #ff8c00;
+	color: #ff0000;
+	font-weight: bold;
 }
 
 .line-ok {
-	background-color: #7fff00;
+	color: #007f00;
 }
 
 .repo-list {

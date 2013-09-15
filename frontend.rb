@@ -43,6 +43,38 @@ helpers do
 		end
 		t
 	end
+	def format(section, repo, tid, result)
+		text = ""
+		formatter_output = ""
+
+		cwd = Dir.getwd
+		# FIXME: Hardcoded repo abspath
+		repo_abspath = cwd + "/.."
+		result_abspath = repo_abspath + "/result"
+		Dir.chdir File.join(repo_abspath, repo)
+
+		if File.executable_real? "formatter.py"
+			command = "./formatter.py " + section + " " + result_abspath + " " + repo + " " + tid
+			result.each do |line|
+				text << line + "\n"
+			end
+			begin
+				pipe = IO.popen("#{command}", mode="r+")
+			rescue Exception => e
+				return text
+			end
+			pipe.write text
+			pipe.close_write
+			formatter_output = pipe.read
+			Process.waitpid2(pipe.pid)
+		else
+			result.each do |line|
+				formatter_output << ol(line) + "<br>"
+			end
+		end
+		Dir.chdir cwd
+		return formatter_output
+	end
 end
 
 class ReportCache
@@ -117,7 +149,18 @@ get '/repo/:repo/:tid' do
 	@report = cache[tid]
 	halt 404 if @report.nil?
 	@repo = repo
+	@tid = tid
 	erb :result
+end
+
+get '/repo/:repo/:commit/:arch/:testcase' do
+	repo = params[:repo]
+	commit = params[:commit]
+	arch = params[:arch]
+	testcase = params[:testcase]
+	filepath = File.join(Dir.getwd, "..", "result", repo, commit, arch, testcase + ".error")
+	@error = File.read(filepath).gsub(/\n/, '<br>') rescue "Error logs not found!"
+	erb :error
 end
 
 get '/about' do

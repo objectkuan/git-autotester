@@ -54,8 +54,8 @@
 <h2>Output</h2>
 <% @report[:result].each do |e| %>
        <h3 id="<%= e[:name] %>"><%= e[:name] %></h3>
-	<center><pre>
-<% e[:result][:output].each do |line| %><%= ol line %><br><% end %></pre></center>
+	<pre>
+<%= format e[:name],@repo, @tid, e[:result][:output] %></pre>
 	<hr>
 <% end %>
 

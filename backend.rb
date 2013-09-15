@@ -235,10 +235,10 @@ class CompileRepo
 		@run_timeout_s = (config[:run_timeout_min] || 1) * 60
 		@filters = config[:filters] || []
 		@result_dir = File.join $CONFIG[:result_abspath], @name
-		
+
 		@runner = TestGroup.new
 		@runner.push(TestGroup::TestPhrase.new "AutoBuild", './autobuild.sh', @build_timeout_s)
-		@runner.push(TestGroup::TestPhrase.new "AutoTest", './autotest.sh', @run_timeout_s)
+		@runner.push(TestGroup::TestPhrase.new "AutoTest", './autotest.sh ' + @result_dir, @run_timeout_s)
 
 		begin
 			@repo = Grit::Repo.new config[:name]

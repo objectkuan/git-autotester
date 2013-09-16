@@ -294,7 +294,7 @@ class CompileRepo
 
 	def run_test_for_commits(ref, new_commits)
 
-		LOGGER.info "Repo #{@name} :OK, let's test branch #{ref.name}:#{ref.commit.id}"
+		LOGGER.info "Repo #{@name}: OK, let's test branch #{ref.name}:#{ref.commit.id}"
 
 		#now begin test
 		failed, result = @runner.run_all
@@ -308,6 +308,8 @@ class CompileRepo
 		File.open(report_name, "w") do |io|
 			YAML.dump report, io
 		end
+
+		LOGGER.info "Repo #{@name}: Test done"
 
 		send_mail ref, report, report_name
 

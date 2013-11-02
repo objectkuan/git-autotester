@@ -237,8 +237,8 @@ class CompileRepo
 		@result_dir = File.join $CONFIG[:result_abspath], @name
 
 		@runner = TestGroup.new
-		@runner.push(TestGroup::TestPhrase.new "AutoBuild", './autobuild.sh', @build_timeout_s)
-		@runner.push(TestGroup::TestPhrase.new "AutoTest", './autotest.sh ' + @result_dir, @run_timeout_s)
+		@runner.push(TestGroup::TestPhrase.new "AutoBuild", './build_sparse.sh', @build_timeout_s)
+		# @runner.push(TestGroup::TestPhrase.new "AutoTest", './autotest.sh ' + @result_dir, @run_timeout_s)
 
 		begin
 			@repo = Grit::Repo.new config[:name]
@@ -377,7 +377,9 @@ class CompileRepo
 			new_commits.each {|c| puts "  #{c.id}" }
 
 			#apply filters
-			@filters.each { |f| new_commits = CommitFilter.__send__(*f, new_commits) }
+			@filters.each {
+			  |f| new_commits = CommitFilter.__send__(*f, new_commits)
+			}
 
 			puts "#{@name} after filters:"
 			new_commits.each {|c| puts "  #{c.id}" }
@@ -417,6 +419,9 @@ def create_all_repo
 			puts e.backtrace
 			next
 		end
+		unless File.directory? $CONFIG[:result_abspath]
+		  `mkdir #{$CONFIG[:result_abspath]}`
+		end
 		report_dir = File.join $CONFIG[:result_abspath], r[:name]
 		unless File.directory? report_dir
 			`mkdir #{report_dir}`
@@ -447,6 +452,7 @@ def startme
 			Dir.chdir $CONFIG[:repo_abspath]
 			repos = create_all_repo
 			Grit::Git.git_timeout = $CONFIG[:git_timeout] || 10
+      Grit::Git.git_max_size = $CONFIG[:git_max_size] || 100000000
 			start_logger_server
 		end
 		repos.each do |k,v|

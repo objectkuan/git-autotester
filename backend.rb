@@ -162,7 +162,14 @@ class CommitFilter
 			commits.select do |c|
 				# f => ["test.c", 1, 0 ,1]
 				(c.parents.count > 1)  \
-				  || (c.stats.files.any? { |f| extlist.include? File.extname(f.first) })
+				  || 
+				(
+				  stats = c.stats
+				  files = stats.files
+				  files.any? { 
+				    |f| extlist.include? File.extname(f.first) 
+				  }
+				)
 			end
 		end
 	end
@@ -382,7 +389,7 @@ class CompileRepo
 			}
 
 			puts "#{@name} after filters:"
-			new_commits.each {|c| puts "  #{c.id}" }
+			new_commits.each {|c| puts " #{c.id}" }
 
 			LOGGER.info "too many commits, maybe new branch or rebased" if new_commits.length > 10
 
@@ -420,11 +427,11 @@ def create_all_repo
 			next
 		end
 		unless File.directory? $CONFIG[:result_abspath]
-		  `mkdir #{$CONFIG[:result_abspath]}`
+		  `mkdir -p #{$CONFIG[:result_abspath]}`
 		end
 		report_dir = File.join $CONFIG[:result_abspath], r[:name]
 		unless File.directory? report_dir
-			`mkdir #{report_dir}`
+			`mkdir -p #{report_dir}`
 			#`mkdir #{File.join report_dir, 'compile'}`
 			#`mkdir #{File.join report_dir, 'running'}`
 		end
@@ -449,6 +456,9 @@ def startme
 			puts "============================"
 			$CONFIG = YAML.load File.read(CONFIG_FILE)
 			old_config_md5 = config_md5
+			unless File.directory? $CONFIG[:repo_abspath]
+			  `mkdir -p #{$CONFIG[:repo_abspath]}`
+			end
 			Dir.chdir $CONFIG[:repo_abspath]
 			repos = create_all_repo
 			Grit::Git.git_timeout = $CONFIG[:git_timeout] || 10

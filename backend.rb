@@ -117,7 +117,7 @@ def time_cmd(command,timeout)
 	rescue Exception => e
 		LOGGER.error "#{command} failed"
 		return {:timeout =>false, :status => 255, :output=> [e.to_s]}
-    	end
+	end
 
 	begin
 		status = Timeout.timeout(timeout) do
@@ -310,10 +310,19 @@ class CompileRepo
 		commits_info = new_commits.map {|c| c.simplify }
 
 		report_name = File.join @result_dir, "#{ref.commit.id}-#{Time.now.to_i}-#{ok}-#{$$}.yaml"
+    # remove the color descriptors in the output 
+	  result.each { |r|
+	    r[:result][:output].map { |line| line.gsub(/(\e\[\d+(;\d+)*m)/, '') }
+	  }
 		report = {:ref => [ref.name, ref.commit.id], :filter_commits => commits_info, :ok => ok, :result => result, :timestamp => Time.now.to_i }
 
-		File.open(report_name, "w") do |io|
-			YAML.dump report, io
+		  
+		begin
+		  File.open(report_name, "w") do |io|
+		  	YAML.dump report, io
+	  	end
+		rescue
+		  puts report
 		end
 
 		LOGGER.info "Repo #{@name}: Test done"
@@ -391,7 +400,7 @@ class CompileRepo
 			puts "#{@name} after filters:"
 			new_commits.each {|c| puts " #{c.id}" }
 
-			LOGGER.info "too many commits, maybe new branch or rebased" if new_commits.length > 10
+			# LOGGER.info "too many commits, maybe new branch or rebased" if new_commits.length > 10
 
 			if new_commits.empty?
 				LOGGER.info "#{@name}:#{ref.name}:#{commitid} introduced no new commits after fiters, skip build"

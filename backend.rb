@@ -310,10 +310,16 @@ class CompileRepo
 		commits_info = new_commits.map {|c| c.simplify }
 
 		report_name = File.join @result_dir, "#{ref.commit.id}-#{Time.now.to_i}-#{ok}-#{$$}.yaml"
+    # replace all the invalid UTF-8 bytes
+    result.each { |r|
+      newresult = []
+      r[:result][:output].map { |line| newresult << line.encode("UTF-8", 'binary', :invalid => :replace, :undef => :replace, :replace => '') }
+      r[:result][:output] = newresult
+    }
     # remove the color descriptors in the output 
-	  result.each { |r|
-	    r[:result][:output].map { |line| line.gsub(/(\e\[\d+(;\d+)*m)/, '') }
-	  }
+    result.each { |r|
+      r[:result][:output].map { |line| line.gsub(/(\[\d+(;\d+)*m)/, '') }
+    }
 		report = {:ref => [ref.name, ref.commit.id], :filter_commits => commits_info, :ok => ok, :result => result, :timestamp => Time.now.to_i }
 
 		  

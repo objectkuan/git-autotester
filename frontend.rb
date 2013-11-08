@@ -49,7 +49,7 @@ helpers do
 
 		cwd = Dir.getwd
 		# FIXME: Hardcoded repo abspath
-		repo_abspath = cwd + "/.."
+		repo_abspath = cwd + "/../../linux-xyj/linux-test"
 		result_abspath = repo_abspath + "/result"
 		Dir.chdir File.join(repo_abspath, repo)
 

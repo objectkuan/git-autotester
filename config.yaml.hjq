@@ -1,0 +1,25 @@
+:bind: "0.0.0.0"
+:port: 4567
+
+:sleep: 5
+:git_timeout: 60
+:git_max_size: 100000000
+
+:ping:
+        :backend_addr: "127.0.0.1"
+        :frontend_addr: "127.0.0.1"
+        :port: 3579
+
+:repo_abspath: "/home/hjq/lab/linux-hjq/linux-test"
+:result_abspath: "/home/hjq/lab/linux-hjq/linux-test/result"
+
+:repos:
+        - :name: "test_hjq_linux"
+          :url: "/home/hjq/lab/linux-hjq/linux-remote"
+          :blacklist:
+          :build_timeout_min: 40
+          :run_timeout_min: 40
+          :nomail: true
+          :filters:
+                - [ "ext", [".c", ".h", ".S", ".sh", ".s", ""] ]
+

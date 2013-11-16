@@ -22,6 +22,7 @@ puts CONFIG_FILE
 YAML::ENGINE.yamler='syck'
 
 $CONFIG = Hash.new
+$BASE = File.dirname(__FILE__)
 
 LOGGER_VERBOSE = Logger.new STDERR
 LOGGER = PingLogger.new STDOUT
@@ -36,6 +37,9 @@ def md5sum fn
 	md5
 end
 
+###
+# Create all the repositories 
+###
 def create_all_repo
 	LOGGER.info "Create or checkout all repos"
 	repos = Hash.new
@@ -47,15 +51,10 @@ def create_all_repo
 			puts e.backtrace
 			next
 		end
-		unless File.directory? $CONFIG[:result_abspath]
-		  `mkdir -p #{$CONFIG[:result_abspath]}`
-		end
-		report_dir = File.join $CONFIG[:result_abspath], r[:name]
-		unless File.directory? report_dir
-			`mkdir -p #{report_dir}`
-			#`mkdir #{File.join report_dir, 'compile'}`
-			#`mkdir #{File.join report_dir, 'running'}`
-		end
+		
+		# Find the result dir
+		`mkdir -p #{CompileRepo.result_abspath}` unless File.directory? CompileRepo.result_abspath
+		`mkdir -p #{repos[ r[:name] ].result_dir}` unless File.directory? repos[ r[:name] ].result_dir
 	end
 	repos
 end
@@ -72,27 +71,38 @@ def startme
 	loop do
 		config_md5 = md5sum CONFIG_FILE
 		if config_md5 != old_config_md5
+		  # Load Config
 			puts "============================"
 			puts "Loading config..."
 			puts "============================"
 			$CONFIG = YAML.load File.read(CONFIG_FILE)
 			old_config_md5 = config_md5
-			unless File.directory? $CONFIG[:repo_abspath]
-			  `mkdir -p #{$CONFIG[:repo_abspath]}`
-			end
-			CompileRepo.result_abspath = $CONFIG[:result_abspath]
-			Dir.chdir $CONFIG[:repo_abspath]
+			
+			# Create the Repo Absolute Path and Result Path
+      CompileRepo.source_abspath = $CONFIG[:source_abspath]
+      CompileRepo.result_abspath = $CONFIG[:result_abspath]
+			`mkdir -p #{CompileRepo.source_abspath}` unless File.directory? CompileRepo.source_abspath
+      `mkdir -p #{CompileRepo.result_abspath}` unless File.directory? CompileRepo.result_abspath
+			
+      # Create Repos
+			Dir.chdir CompileRepo.source_abspath
 			repos = create_all_repo
+			
+			# Set Grit limit
 			Grit::Git.git_timeout = $CONFIG[:git_timeout] || 10
       Grit::Git.git_max_size = $CONFIG[:git_max_size] || 100000000
+        
+      # Start server
 			start_logger_server
 		end
+		
 		repos.each do |k,v|
 			#chdir first
-			Dir.chdir File.join($CONFIG[:repo_abspath], k)
+			Dir.chdir File.join(CompileRepo.source_abspath, k)
 			v.start_test
-			Dir.chdir $CONFIG[:repo_abspath]
+			Dir.chdir CompileRepo.source_abspath
 		end
+		
 		sleep ($CONFIG[:sleep] || 30)
 		LOGGER.ping
 	end

@@ -49,8 +49,8 @@ helpers do
 
 		cwd = Dir.getwd
 		# FIXME: Hardcoded repo abspath
-		repo_abspath = cwd + "/../../linux-xyj/linux-test"
-		result_abspath = repo_abspath + "/result"
+		repo_abspath = "/home/hjq/lab/gat_repos/sources"
+		result_abspath = "/home/hjq/lab/gat_repos/results"
 		Dir.chdir File.join(repo_abspath, repo)
 
 		if File.executable_real? "formatter.py"

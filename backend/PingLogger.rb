@@ -1,5 +1,7 @@
 # encoding: utf-8
 
+require "./backend/Numeric.rb"
+
 class PingLogger < Logger
   attr_reader :lastping
   def initialize(io, len = 20)

@@ -1,9 +1,11 @@
 # encoding: utf-8
 
-require "./backend/TestGroup.rb"
-require "./backend/CommitFilter.rb"
-require "./backend/GritHelper.rb"
-require "./backend/ToolsManager.rb"
+$LOAD_PATH.unshift(File.dirname(__FILE__))
+require "TestGroup"
+require "CommitFilter"
+require "GritHelper"
+require "ToolsManager"
+require "BugHelper"
 
 class CompileRepo
   attr_reader :repo, :name, :remote_url, :timeouts
@@ -32,8 +34,9 @@ class CompileRepo
     @remote_url = config[:remote_url]
     @filters = config[:filters] || []
     @result_dir = File.join @@result_abspath, @name
+    @source_dir = File.join @@source_abspath, @name
     @tool = config[:tool]
-    @timeout = config[:timeout_min]
+    @timeout = config[:timeout_sec]
 
     @runner = TestGroup.new
     @runner.push(TestGroup::TestPhrase.new @tool, ToolsManager.commandOf(@tool), @timeout)
@@ -69,14 +72,43 @@ class CompileRepo
       r[:result][:output].map { |line| line.gsub(/(\[\d+(;\d+)*m)/, '') }
     }
     
-    # Writes out the report
-    commits_info = new_commits.map {|c| c.simplify } # We can use c.to_hash
-    report = {:ref => [ref.name, ref.commit.id], :filter_commits => commits_info, :ok => ok, :result => result, :timestamp => Time.now.to_i }
-    report_name = File.join @result_dir, "#{ref.commit.id}-#{Time.now.to_i}-#{ok}-#{$$}.yaml"
-    File.open(report_name, "w") do |io|
-      YAML.dump report, io
-    end
-
+    # Write out the report
+    #    commits_info = new_commits.map {|c| c.simplify } # We can use c.to_hash
+    #    report = {:ref => [ref.name, ref.commit.id], :filter_commits => commits_info, :ok => ok, :result => result, :timestamp => Time.now.to_i }
+    #    report_name = File.join @result_dir, "#{ref.commit.id}-#{Time.now.to_i}-#{ok}-#{$$}.yaml"
+    #    File.open(report_name, "w") do |io|
+    #      YAML.dump report, io
+    #    end
+    
+    # Parse the result
+    parsed_results = []
+    result.each { |r|
+      new_parsed_results = ResultParser.__send__("parse_" + @tool, r[:result][:output], @source_dir)
+      parsed_results = parsed_results + new_parsed_results
+    }
+    
+    # Persist the data
+    parsed_results.each { |r|
+      BugHelper::Bug.create(
+        :title => '', 
+        :commitId => ref.commit.id,
+        :sourceCommitIds => '',
+        :patchCommitIds => '',
+        :file => r[:file],
+        :line => r[:line],
+        :tools => @tool,
+        :target => r[:target],
+        :version => '',
+        :opensource => r[:opensource],
+        :toolDescription => r[:toolDescription],
+        :manualDescription => '',
+        :bugType => r[:bugType],
+        :discoveredTime => Time.now,
+        :CVEID => '',
+        :submitter => 'thcsos'
+      )
+    }
+    
     LOGGER.info "Repo #{@name}: Test done"
 
   end
@@ -110,7 +142,7 @@ class CompileRepo
       commitid = ref.commit.id
 
       begin
-        #  Force checkout here
+        # Force checkout here
         LOGGER.info "Checkout #{@name} #{ref.name}:#{commitid}"
         @repo.git.checkout( {:f=>true}, commitid)
       rescue Grit::Git::CommandFailed
@@ -122,14 +154,13 @@ class CompileRepo
       last_test_commit = last_test_list[ref.name]
 
       if last_test_commit
-        # old..new
-        new_commits = @repo.commits_between(last_test_commit, commitid).reverse
+        new_commits = @repo.commits_between(last_test_commit, commitid).reverse # old..new
       else
         LOGGER.info "#{ref.name} new branch?"
         new_commits = @repo.commits commitid, 30
       end
-      # if the branch has been reset after last test,
-      # new_commits will be empty
+      
+      # if the branch has been reset after last test, new_commits will be empty
       new_commits = [ref.commit] if new_commits.empty?
 
       #puts "#{@name} before filters:"
@@ -137,7 +168,7 @@ class CompileRepo
 
       #apply filters
       @filters.each {
-        |f| new_commits = CommitFilter.__send__(*f, new_commits)
+        |f| new_commits = CommitFilter.__send__(f[0], f[1], new_commits)
       }
 
       #puts "#{@name} after filters:"
@@ -163,6 +194,7 @@ class CompileRepo
     File.open(compiled_file, "a") do |f|
       new_compiled_list.each {|e| f.puts e}
     end
+
   end
 
 end

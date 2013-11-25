@@ -5,20 +5,21 @@ require 'active_record'
 require 'yaml' 
 
 dbconfig = YAML::load(File.open('database.yaml'))
-ActiveRecord::Base.establish_connection(dbconfig)
+puts dbconfig[:database]
+ActiveRecord::Base.establish_connection(dbconfig[:database])
 
 puts ActiveRecord::Base.connection.tables
 
 class Bug < ActiveRecord::Base
-  self.table_name = "bug"
+  self.table_name = "buglist"
 end
 
 
 puts Bug.count
 
-Bug.create(:title => 'Luc Juggery', :commitId => "Nashville, Tenessee")  
-Bug.create(:title => 'Sunil Kelkar', :commitId => "Pune, India")  
-Bug.create(:title => 'Adam Smith', :commitId => "San Fransisco, USA")  
+Bug.create(:title => 'Luc Juggery', :commitId => "Nashville, Tenessee", :submitter => '')  
+Bug.create(:title => 'Sunil Kelkar', :commitId => "Pune, India", :submitter => '')  
+Bug.create(:title => 'Adam Smith', :commitId => "San Fransisco, USA", :submitter => '')  
 
 puts Bug.count
 Bug.first.destroy

@@ -10,13 +10,15 @@ require 'timeout'
 require 'socket'
 require 'mail'
 
-require "./backend/PingLogger.rb"
-require "./backend/CompileRepo.rb"
 
+$ROOT= File.dirname(File.expand_path(__FILE__))
+$CONFIG_FILE= File.join $ROOT, "config.yaml"
+$TOOLS_CONFIG= File.join $ROOT, "tools.yaml"
 
-ROOT= File.dirname(File.expand_path __FILE__)
-CONFIG_FILE= File.join ROOT, "config.yaml"
-puts CONFIG_FILE
+$LOAD_PATH.unshift(File.dirname(__FILE__))
+require "backend/PingLogger"
+require "backend/CompileRepo"
+
 
 # quick fix to get correct string encoding
 YAML::ENGINE.yamler='syck'
@@ -69,14 +71,17 @@ def startme
 	old_config_md5 = nil
 	repos = Hash.new
 	loop do
-		config_md5 = md5sum CONFIG_FILE
+		config_md5 = md5sum $CONFIG_FILE
 		if config_md5 != old_config_md5
 		  # Load Config
 			puts "============================"
 			puts "Loading config..."
 			puts "============================"
-			$CONFIG = YAML.load File.read(CONFIG_FILE)
+			$CONFIG = YAML.load File.read($CONFIG_FILE)
 			old_config_md5 = config_md5
+			
+			# Connect to database
+      BugHelper::connectToDB
 			
 			# Create the Repo Absolute Path and Result Path
       CompileRepo.source_abspath = $CONFIG[:source_abspath]

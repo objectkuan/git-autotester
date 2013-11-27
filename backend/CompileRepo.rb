@@ -90,7 +90,7 @@ class CompileRepo
     # Persist the data
     parsed_results.each { |r|
       BugHelper::Bug.create(
-        :title => '', 
+        :title => r[:title], 
         :commitId => ref.commit.id,
         :sourceCommitIds => '',
         :patchCommitIds => '',

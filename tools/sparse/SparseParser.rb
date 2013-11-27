@@ -19,7 +19,8 @@ class ResultParser
             :opensource => 1,
             :bugType => ""
           }
-
+          item[:title] = item[:file].split("/")[-1] + ":" + item[:line]
+            
           # Remove duplicated
           if(index[item[:file]] == nil)
             index[item[:file]] = {}

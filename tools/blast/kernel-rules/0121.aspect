@@ -1,0 +1,38 @@
+before: file("$this")
+{
+extern void ldv_check( void *, unsigned long flags );
+}
+
+around: define(IRQF_ONESHOT)
+{
+   0x10000000
+}
+
+/* unsigned int irq, irq_handler_t handler, irq_handler_t thread_fn, unsigned long flags, const char *name, void *dev */
+before:
+   execution( static inline int request_threaded_irq(..) ) ||
+   call( int request_threaded_irq(..) )
+{
+   ldv_check( $arg2, $arg4 );
+}
+
+/* struct device *dev, unsigned int irq, irq_handler_t handler, irq_handler_t thread_fn, unsigned long irqflags, const char *devname, void *dev_id */
+before: call( int devm_request_threaded_irq(..) )
+{
+   ldv_check( $arg3, $arg5 );
+}
+
+new: file(LDV_COMMON_MODEL)
+{
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check') Checks that either handler is not null or there is IRQF_ONESHOT in flags.*/
+void
+ldv_check( void *handler, unsigned long flags )
+{
+   /* LDV_COMMENT_ASSERT If the default handler is used then IRQF_ONESHOT should be passed.*/
+   ldv_assert( ( ( handler == 0 ) && ( flags >= 0x10000000 ) ) || ( handler != 0 ) );
+}
+
+}
+

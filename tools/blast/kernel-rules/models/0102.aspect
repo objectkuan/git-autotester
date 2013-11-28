@@ -1,0 +1,79 @@
+before: file("$this")
+{
+#include <linux/slab.h>
+
+// Provide model function prototypes before their usage.
+void ldv_get_pm_runtime(void);
+void ldv_check_context_pm_runtime(void);
+void ldv_check_context_pm_runtime_flags(gfp_t flags);
+void ldv_put_pm_runtime(void);
+}
+
+before: call(static inline int pm_runtime_get_sync(..))
+{
+  ldv_get_pm_runtime();
+}
+
+// Check that __netdev_alloc_skb() wasn't called in pm_runtime context.
+before: call(struct sk_buff *__netdev_alloc_skb(..))
+{
+  ldv_check_context_pm_runtime_flags($arg3);
+}
+
+// netdev_alloc_skb() is equvivalent to __netdev_alloc_skb() called with
+// GFP_ATOMIC flag.
+before: call(static inline struct sk_buff *netdev_alloc_skb(..))
+{
+  ldv_check_context_pm_runtime();
+}
+
+before: call(static inline void pm_runtime_put_noidle(..))
+{
+  ldv_put_pm_runtime();
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+// There are 2 possible states of pm runtime.
+enum
+{
+  LDV_PM_RUNTIME_ZERO_STATE, // pm runtime isn't got.
+  LDV_PM_RUNTIME_GOT         // pm runtime is got.
+};
+
+/* LDV_COMMENT_CHANGE_STATE At the beginning pm runtime is not got. */
+int ldv_pm_runtime = LDV_PM_RUNTIME_ZERO_STATE;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_get_pm_runtime') Get pm runtime. */
+void ldv_get_pm_runtime(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Get pm runtime. */
+  ldv_pm_runtime = LDV_PM_RUNTIME_GOT;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_context_pm_runtime') Check that context is not pm runtime. */
+void ldv_check_context_pm_runtime(void)
+{
+  /* LDV_COMMENT_ASSERT a sleeping function could not be called while pm runtime is held. */
+  ldv_assert(ldv_pm_runtime == LDV_PM_RUNTIME_ZERO_STATE);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_context_pm_runtime_flags') Check that non GFP_KERNEL flag wasn't used in pm runtime context. */
+void ldv_check_context_pm_runtime_flags(gfp_t flags)
+{
+  /* LDV_COMMENT_ASSERT a sleeping function (because of non GFP_KERNEL flag) could not be called while pm runtime is held. */
+  ldv_assert(ldv_pm_runtime == LDV_PM_RUNTIME_ZERO_STATE || flags == GFP_KERNEL);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_put_pm_runtime') Put pm runtime. */
+void ldv_put_pm_runtime(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Put pm runtime. */
+  ldv_pm_runtime = LDV_PM_RUNTIME_ZERO_STATE;
+}
+
+}

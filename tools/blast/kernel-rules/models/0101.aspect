@@ -1,0 +1,103 @@
+before: file("$this")
+{
+	#include <linux/blkdev.h>
+	#include <linux/gfp.h>
+
+	// Provide model function prototypes before their usage.
+
+	void ldv_get_blk_rq(struct request *res, gfp_t mask);
+	void ldv_put_blk_rq(void);
+}
+
+// Error processing interface models.
+@include <kernel-model/ERR.aspect>
+#include <verifier/rcv.h>
+//@include "engine-cbmc.h"
+
+after: 	call(struct request *blk_get_request(..))
+	|| call(struct request *blk_make_request(..))
+{
+  ldv_get_blk_rq($res, $arg3);
+}
+
+before: call(void blk_put_request(..))
+	|| call (void __blk_put_request(..))	
+{
+  ldv_put_blk_rq();
+}
+
+around: call (void blk_execute_rq_nowait(..))
+{
+//	if (nondet_int())
+	if ($arg_value5)
+		$arg_value5($arg3, nondet_int());
+}
+
+//BLAST_ALIASES=1
+/*
+
+Requires further development
+	else
+		$arg3->end_io = NULL;
+}
+
+before: call (int blk_execute_rq(..))
+{
+	if (ldv_nondef_int())
+		blk_execute_rq_nowait($arg1, $arg2, $arg3, $arg4 ...)
+}
+*/
+
+// HACK for CPAchecker that allows to avoid CIL parsing errors.
+//around: define(test_bit(nr, addr))
+//{
+//0
+//}
+
+after: file ("$this")
+{
+#include <verifier/rcv.h>
+#include <kernel-model/ERR.inc>
+#include <linux/gfp.h>
+// There are 2 possible states of blk request.
+enum
+{
+  LDV_BLK_RQ_ZERO_STATE, // blk request isn't got.
+  LDV_BLK_RQ_GOT         // blk request is got.
+};
+
+/* LDV_COMMENT_CHANGE_STATE At the beginning blk request is not got. */
+int ldv_blk_rq = LDV_BLK_RQ_ZERO_STATE;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_get_blk_rq') Check that a blk request was not got and get it. */
+void ldv_get_blk_rq(struct request *res, gfp_t mask)
+{
+    /* LDV_COMMENT_ASSERT blk request could be got just in case when it was not got before. */
+    ldv_assert(ldv_blk_rq == LDV_BLK_RQ_ZERO_STATE);
+    /*Check the last argument of blk_[make|get]_request. If it's one of this values it's isn't necessary to check res on error*/
+    if (mask == __GFP_WAIT || mask == GFP_KERNEL || mask == GFP_NOIO)
+        /* LDV_COMMENT_CHANGE_STATE Get blk request. */
+        ldv_blk_rq = LDV_BLK_RQ_GOT;
+    else
+        if (res && !IS_ERR(res))
+	        /* LDV_COMMENT_CHANGE_STATE Get blk request. */
+                ldv_blk_rq = LDV_BLK_RQ_GOT;	
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_put_blk_rq') Check that a blk request was got and free it. */
+void ldv_put_blk_rq(void)
+{
+  /* LDV_COMMENT_ASSERT blk request could be put just in case when it was got. */
+  ldv_assert(ldv_blk_rq == LDV_BLK_RQ_GOT);
+  /* LDV_COMMENT_CHANGE_STATE Put blk request. */
+  ldv_blk_rq = LDV_BLK_RQ_ZERO_STATE;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') All got blk requests should be put at the end. */
+void ldv_check_final_state(void)
+{
+  /* LDV_COMMENT_ASSERT blk request could not be got at the end. */
+  ldv_assert(ldv_blk_rq == LDV_BLK_RQ_ZERO_STATE);
+}
+
+}

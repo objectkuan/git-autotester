@@ -1,0 +1,61 @@
+before: file("$this")
+{
+// Provide model function prototypes before their usage.
+void ldv_disable_call_opl3_set_instr(void);
+void ldv_call_opl3_set_instr(void);
+void ldv_enable_call_opl3_set_instr(void);
+}
+
+around: call(static void opl3_setup_voice(..))
+{
+  ldv_disable_call_opl3_set_instr();
+  // Be sure that the second argument (voice) of opl3_setup_voice is negative.
+  // In this case opl3_set_instr shouldn't be called in cflow of opl3_setup_voice.
+  $arg2 = ldv_undef_int_negative();
+  $proceed;
+  ldv_enable_call_opl3_set_instr();
+}
+
+before: call(static int opl3_set_instr(..))
+{
+  ldv_call_opl3_set_instr();
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+// There are 2 possible states of opl3_set_instr.
+enum
+{
+  LDV_CALL_ZERO_STATE, // opl3_set_instr call is enabled.
+  LDV_CALL_DISABLED    // opl3_set_instr call is disabled.
+};
+
+/* LDV_COMMENT_CHANGE_STATE At the beginning opl3_set_instr call is enabled. */
+int ldv_call = LDV_CALL_ZERO_STATE;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_disable_call_opl3_set_instr') Disable opl3_set_instr call. */
+void ldv_disable_call_opl3_set_instr(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Disable opl3_set_instr call. */
+  ldv_call = LDV_CALL_DISABLED;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_call_opl3_set_instr') Ensure that opl3_set_instr is called just when it is enabled. */
+void ldv_call_opl3_set_instr(void)
+{
+  /* LDV_COMMENT_ASSERT opl3_set_instr call cannot be done at this point. */
+  ldv_assert(ldv_call == LDV_CALL_ZERO_STATE);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_enable_call_opl3_set_instr') Enable opl3_set_instr call. */
+void ldv_enable_call_opl3_set_instr(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Enable opl3_set_instr call. */
+  ldv_call = LDV_CALL_ZERO_STATE;
+}
+
+}

@@ -1,0 +1,76 @@
+before: file("$this")
+{
+	#include <linux/netdevice.h>
+
+	// Provide model function prototype before their usage.
+	void ldv_napi_enable(void);
+	void ldv_napi_disable(void);
+	void ldv_napi_complete(void);
+}
+
+before: call (static inline void napi_enable(..))
+{
+	ldv_napi_enable();
+}
+
+before: execution (static inline void napi_disable(..))
+	|| execution (static inline void napi_schedule(..))
+	|| execution (static inline bool napi_schedule_prep(..))
+	|| call (static int enqueue_to_backlog(..))
+{
+	ldv_napi_disable();
+}
+
+before: call (void __napi_complete(..))
+	|| call (void napi_complete(..))
+{
+	ldv_napi_complete();
+}
+
+after: file ("$this")
+{
+	#include <verifier/rcv.h>
+
+	//States of napi
+	enum
+	{
+		NAPI_ZERO_STATE,	//Napi is disable
+		NAPI_ENABLE		//Napi is enable
+	};
+	
+	/* LDV_COMMENT_CHANGE_STATE At the beginning napi is desable. */
+	int napi_state = NAPI_ZERO_STATE;
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_napi_enable') napi_enable() shouldn't be called after other napi_enable() */
+	void ldv_napi_enable(void)
+	{
+		/* LDV_COMMENT_ASSERT Check the state of napi */
+		ldv_assert(napi_state == NAPI_ZERO_STATE);
+		/* LDV_COMMENT_CHANGE_STATE . Nappi is enable */
+		napi_state = NAPI_ENABLE;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_napi_disable') Only change the state of napi_state. It's not necessary to call napi_disable() and other functions only after napi_enable(). */
+	void ldv_napi_disable(void)
+	{
+		/* LDV_COMMENT_CHANGE_STATE . Nappi is disable */
+		napi_state = NAPI_ZERO_STATE;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_napi_complete') Check, that these functions are called only after napi_enable(). */
+	void ldv_napi_complete(void)
+	{
+		/* LDV_COMMENT_ASSERT Check the state of napi */
+		ldv_assert(napi_state == NAPI_ENABLE);
+		/* LDV_COMMENT_CHANGE_STATE . Nappi is disable */
+		napi_state = NAPI_ZERO_STATE;
+	}
+	
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') . */
+	void ldv_check_final_state(void)
+	{
+		/* LDV_COMMENT_ASSERT nappi should be disable. */
+		ldv_assert(napi_state == NAPI_ZERO_STATE);
+	}
+}
+	

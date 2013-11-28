@@ -1,0 +1,27 @@
+before: file("$this")
+{
+	#include "asm-generic/bitops/find.h"
+
+	// Provide model function prototype before their usage.
+	void ldv_check_arg(unsigned long size, unsigned long offset);
+}
+
+before: call (unsigned long find_next_zero_bit(const unsigned long *addr, unsigned long size, unsigned long offset))
+{
+	ldv_check_arg($arg2, $arg3);
+}
+
+after: file ("$this")
+{
+	#include <verifier/rcv.h>
+	
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_arg') Check that arguments of find_next_zero_bit in the right order. */
+	void ldv_check_arg(unsigned long size, unsigned long offset)	
+	{
+		/* LDV_COMMENT_ASSERT size should be positive. */
+		ldv_assert(size > 0);
+		/* LDV_COMMENT_ASSERT offset should not be negative. */
+		ldv_assert(offset >= 0);
+		
+	}
+}

@@ -1,0 +1,51 @@
+@include <kernel-model/export-3.5.aspect>
+@include <kernel-model/ERR.aspect>
+
+before: file("$this")
+{
+  #include <linux/kernel.h>
+  #include <linux/module.h>
+  void ldv_check_probe(int ret_val);
+  void ldv_func_check(int ret_val);
+  void ldv_check_pointer(void *ret_val);
+}
+
+after: call(void ldv_check_return_value_probe(..))
+{
+  /*LDV_COMMENT_OTHER Check probe() function return value.*/
+  ldv_check_probe($arg1);
+}
+
+
+new: file(LDV_COMMON_MODEL)
+{
+  /*LDV_COMMENT_OTHER There is EINTR definition here.*/
+  #include "asm-generic/errno-base.h"
+  #include <verifier/rcv.h>
+  #include <kernel-model/ERR.inc>
+
+//#include "linux/export-3.5.aspect"
+
+  /*LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_probe') This function checks if function return value is equal to -EINTR*/
+  void ldv_check_probe(int ret_val)
+  {
+    /*LDV_COMMENT_ASSERT Check if function return value is equal to -EINTR.*/
+    ldv_assert(ret_val != -EINTR);
+  }
+
+  /*LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_func_check') This function skip export functions and some functions that never return -EINTR.*/
+  void ldv_func_check(int ret_val)
+  {
+    /*LDV_COMMENT_OTHER Some functions are exported, so we consider that return value isnt equal to -EINTR.*/
+    ldv_assume(ret_val != -EINTR);
+  }
+
+  /*LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_pointer') This function skip all error pointers. */
+  void ldv_check_pointer(void *ret_val)
+  {
+    long ptr;
+    ptr = ldv_ptr_err(ret_val);
+    /*LDV_COMMENT_OTHER Skipping pointer with value PTR_ERR(-EINTR) and less than zero. */
+    ldv_assume((ptr != -EINTR) && (ret_val >= 0));
+  }
+}

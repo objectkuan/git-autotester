@@ -1,0 +1,78 @@
+@include <kernel-model/alloc.aspect>
+
+before: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+
+extern void *ldv_undefined_pointer(void);
+void ldv_check_alloc_flags(gfp_t flags);
+struct page *ldv_check_alloc_flags_and_return_some_page(gfp_t flags);
+extern void ldv_check_alloc_nonatomic(void);
+}
+
+before: ALLOC
+{
+  ldv_check_alloc_flags(flags);
+}
+
+around: ALLOC_AROUND
+{
+  ldv_check_alloc_flags(flags);
+}
+
+before: ALLOC_WITHOUT
+{
+  ldv_check_alloc_nonatomic();
+}
+
+around: alloc_pages
+{
+  ldv_check_alloc_flags_and_return_some_page(gfp_mask);
+}
+
+around: alloc_page_vma
+{
+  ldv_check_alloc_flags_and_return_some_page(gfp_mask);
+}
+
+
+after: file ("$this")
+{
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+
+#include <verifier/rcv.h>
+
+extern struct page *ldv_some_page(void);
+
+//RULE: ID0010
+extern int LDV_IN_INTERRUPT;
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_flags') Checks if incorrect flag was used in context of interrupt. */
+void ldv_check_alloc_flags(gfp_t flags) 
+{
+/* LDV_COMMENT_ASSERT Check value of flags in context of interrupt */
+	ldv_assert((LDV_IN_INTERRUPT == 1) || (flags==GFP_ATOMIC));
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_nonatomic')  Checks if incorrect flag was used in context of interrupt. */
+void ldv_check_alloc_nonatomic(void)
+{
+	if (LDV_IN_INTERRUPT == 2)
+/* LDV_COMMENT_ASSERT Check value of flags in context of interrupt */
+		ldv_assert(0);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_flags_and_return_some_page') Checks if incorrect flag was used in context of interrupt and return some page. */
+struct page *ldv_check_alloc_flags_and_return_some_page(gfp_t flags)
+{
+/* LDV_COMMENT_ASSERT Check value of flags in context of interrupt */
+	ldv_assert((LDV_IN_INTERRUPT == 1) || (flags == GFP_ATOMIC));
+/* LDV_COMMENT_RETURN Return a page pointer (maybe NULL). */
+	return ldv_some_page();
+}
+
+}

@@ -1,0 +1,109 @@
+use Template;
+
+
+my $config = {
+  ABSOLUTE => 1,  # Allow absolute paths for templates.
+  INCLUDE_PATH => # Scan for template includes there.
+    $script_dir,
+  DEBUG => 0,     # Don't debug the template engine.
+  PRE_CHOMP => 1  # Remove all adjacent whitespaces before directives.
+};
+
+my $tt = Template->new($config)
+  or die ($Template::ERROR);
+
+if ($isgather_arg_signs)
+{
+  # Generate information request on the basis of template specified.
+  my $info_request = "$tool_aux_dir/inforequests/inforequest$id.aspect";
+  $tt->process($template, {}, $info_request)
+    or die ($Template::ERROR);
+
+  # Execute information request with help of aspectator.
+  $ENV{'LDV_REROUTE_INFO'} = "$tool_aux_dir/inforequests/inforequest$id.reroute_info";
+  print_debug_trace("Delete file where reroute information will be put '$ENV{LDV_REROUTE_INFO}'");
+  unlink($ENV{'LDV_REROUTE_INFO'}) if (-f $ENV{'LDV_REROUTE_INFO'});
+  push(@gathered_arg_sign_files, $ENV{'LDV_REROUTE_INFO'});
+
+  $ENV{'LDV_STATIC_INITS_INFO'} = "$tool_aux_dir/inforequests/inforequest$id.static_inits_info";
+  print_debug_trace("Delete file where static inits information will be put '$ENV{LDV_STATIC_INITS_INFO}'");
+  unlink($ENV{'LDV_STATIC_INITS_INFO'}) if (-f $ENV{'LDV_STATIC_INITS_INFO'});
+  push(@gathered_static_inits_files, $ENV{'LDV_STATIC_INITS_INFO'});
+
+  # See corresponding section in RI for some description.
+  my @args = (
+      $ldv_aspectator
+    , '--debug', $debug_level
+    , '--in', $in
+    , '--aspect', $info_request
+    , '--stage', 'instrumentation'
+    , '--out', dirname($info_request) . '/' . "inforequest$id.out"
+    , '--general-opts', "-I$ldv_model_dir"
+    , '--aspect-preprocessing-opts', "--include $ri_aspect"
+    , '--', map("\"$ARG\"", @opts)
+    # To find headers placed near original source file.
+    , '-I', dirname($out)
+  );
+
+  chdir($cmd{'cwd'})
+     or die("Can't change directory to '$cmd{'cwd'}'");
+  print_debug_info("Execute command '@args'");
+  my ($status, $desc) = exec_status_and_desc(@args);
+
+  chdir($tool_working_dir)
+    or die("Can't change directory to '$tool_working_dir'");
+  delete($ENV{'LDV_REROUTE_INFO'});
+}
+else
+{
+  # Gather all found argument signs together and remove duplicates.
+  my %arg_signs;
+  foreach my $arg_sign_file (@gathered_arg_sign_files)
+  {
+    # There isn't such the file if there aren't argument signatures for a file
+    # instrumented.
+    next unless (-f $arg_sign_file);
+
+    open(ARG_SIGN, '<', $arg_sign_file)
+      or die("Can't open file '$arg_sign_file' for read: $ERRNO");
+    my @arg_signs = <ARG_SIGN>;
+    foreach my $arg_sign (@arg_signs)
+    {
+      next if ($arg_sign =~ /^\s*$/);
+      chomp($arg_sign);
+      $arg_signs{$arg_sign} = 1;
+    }
+    close(ARG_SIGN)
+      or die("Can't close file handler for '$arg_sign_file': $ERRNO");
+  }
+  my @arg_signs = sort(keys(%arg_signs));
+
+  # Gather all statically initialized variables.
+  my @static_inits;
+  foreach my $static_inits_file (@gathered_static_inits_files)
+  {
+    # There isn't such the file if there aren't statically initialized variables
+    # for a file instrumented.
+    next unless (-f $static_inits_file);
+
+    open(STATIC_INITS, '<', $static_inits_file)
+      or die("Can't open file '$static_inits_file' for read: $ERRNO");
+    foreach my $static_init (<STATIC_INITS>)
+    {
+      next if ($static_init =~ /^\s*$/);
+      chomp($static_init);
+      push(@static_inits, $static_init);
+    }
+    close(STATIC_INITS)
+      or die("Can't close file handler for '$static_inits_file': $ERRNO");
+  }
+
+  # Instantiate template on the basis of obtained argument signatures.
+  my $vars = {
+    signs => \@arg_signs
+    , static_inits => \@static_inits
+  };
+
+  $tt->process($template, $vars, $aspect)
+    or die ($Template::ERROR);
+}

@@ -1,0 +1,158 @@
+before: file("$this")
+{
+  #include <linux/kernel.h>
+  #include <linux/module.h>
+  #include <linux/string.h>
+  // Provide model function prototypes before their usage.
+  void ldv_check_len(long int n);
+  void ldv_check_ret_val(int res);
+}
+/* ===Checking for the third argument=== */
+before: call(static unsigned long copy_from_user(..))
+|| call(static inline unsigned long copy_from_user(..))
+|| call(inline long copy_to_user(..))
+|| call(inline long copy_from_user(..))
+|| call(long __strncpy_from_user(..))
+|| call(inline long strncpy_from_user(..))
+|| call(unsigned long __copy_from_user(..))
+|| call(unsigned long __copy_to_user(..))
+|| call(unsigned long __copy_to_user_std(..))
+|| call(unsigned long __strncpy_from_user(..))
+|| call(unsigned long __strnlen_user(..))
+|| call(static inline unsigned long copy_to_user(..))
+|| call(static inline long strncpy_from_user(..))
+|| call(__kernel_size_t __copy_user(..))
+|| call(__kernel_size_t copy_to_user(..))
+|| call(__kernel_size_t copy_from_user(..))
+|| call(static inline __kernel_size_t __copy_to_user(..))
+|| call(static inline __kernel_size_t __copy_from_user(..))
+|| call(long strncpy_from_user(..))
+|| call(static inline long __copy_from_user(..))
+|| call(static inline long __copy_to_user(..))
+|| call(unsigned long __copy_user(..))
+|| call(static inline long __strncpy_from_user(..))
+|| call(static inline long copy_from_user(..))
+|| call(static inline long copy_to_user(..))
+|| call(unsigned long __copy_user (..))
+|| call(static inline unsigned long __copy_to_user (..))
+|| call(static inline unsigned long __copy_from_user (..))
+|| call(static inline unsigned long copy_in_user (..))
+|| call(long __strncpy_from_user (..))
+|| call(int __strncpy_user(..))
+|| call(static inline int verify_area(..))
+|| call(unsigned long copy_to_user(..))
+|| call(unsigned long copy_in_user(..))
+|| call(unsigned long copy_from_user(..))
+|| call(static inline unsigned long __copy_from_user_inatomic(..))
+|| call(static inline unsigned long __copy_to_user_inatomic(..))
+|| call(static inline unsigned long __copy_to_user(..))
+|| call(static inline unsigned long __copy_from_user(..))
+|| call(static inline unsigned long __copy_in_user(..))
+|| call(static inline unsigned long copy_in_user(..))
+|| call(void memcpy_absolute(..))
+|| call(int memcpy_real(..))
+|| call(int copy_to_user_real(..))
+|| call(int copy_from_user_real(..))
+|| call(int __copy_tofrom_user(..))
+|| call(int __strncpy_from_user(..))
+|| call(static inline int strncpy_from_user(..))
+|| call(static __always_inline unsigned long __copy_from_user(..))
+|| call(static __always_inline unsigned long __copy_to_user(..))
+|| call(unsigned long ___copy_from_user(..))
+|| call(unsigned long ___copy_to_user(..))
+|| call(unsigned long ___copy_in_user(..))
+|| call(unsigned long __copy_to_user_inatomic(..))
+|| call(unsigned long __copy_from_user_inatomic(..))
+|| call(static inline unsigned long _copy_from_user(..))
+|| call(unsigned long __copy_in_user_inatomic(..))
+|| call(int copy_to_user(..))
+|| call(int strncpy_from_user(..))
+|| call(static __always_inline unsigned long __copy_to_user_inatomic(..))
+|| call(static __always_inline unsigned long __copy_from_user_inatomic(..))
+|| call(static __always_inline unsigned long __copy_from_user_nocache(..))
+|| call(static __always_inline unsigned long __copy_from_user_inatomic_nocache(..))
+|| call(unsigned long _copy_from_user(..))
+|| call(unsigned long _copy_to_user(..))
+|| call(static __always_inline int copy_to_user(..))
+|| call(static __always_inline int __copy_from_user(..))
+|| call(static __always_inline int __copy_to_user(..))
+|| call(static __always_inline int __copy_in_user(..))
+|| call(static __always_inline int __copy_from_user_inatomic(..))
+|| call(static __always_inline int __copy_to_user_inatomic(..))
+|| call(long __copy_user_nocache(..))
+|| call(static inline int __copy_from_user_nocache(..))
+|| call(static inline int __copy_from_user_inatomic_nocache(..))
+|| call(static inline unsigned long __copy_from_user_inatomic_nocache(..))
+|| call(static inline unsigned long __copy_from_user_nocache(..))
+|| call(long probe_kernel_read(..))
+|| call(long __probe_kernel_read(..))
+|| call(static inline long __do_strncpy_from_user(..))
+|| call(static inline int __copy_from_user(..))
+|| call(static inline int __copy_to_user(..))
+{
+  ldv_check_len($arg3);
+}
+/* ===Checking for the second argument=== */
+before: call(inline long __clear_user(..))
+|| call(inline long clear_user(..))
+|| call(inline long strnlen_user(..))
+|| call(long __strnlen_user(..))
+|| call(unsigned long __clear_user(..))
+|| call(unsigned long __clear_user_std(..))
+|| call(static inline unsigned long clear_user(..))
+|| call(static inline long strnlen_user(..))
+|| call(__kernel_size_t clear_user(..))
+|| call(__kernel_size_t __clear_user(..))
+|| call(long strnlen_user(..))
+|| call(static inline unsigned long __clear_user(..))
+|| call(unsigned long clear_user(..))
+|| call(int __strnlen_user(..))
+|| call(static inline long __strnlen_user(..))
+|| call(static inline unsigned long strnlen_user(..))
+|| call(int __clear_user(..))
+|| call(int clear_user(..))
+|| call(int strnlen_user(..))
+|| call(unsigned long __strnlen_user(..))
+{
+  ldv_check_len($arg2);
+}
+
+after: file ("$this")
+{
+  #include <linux/kernel.h>
+  #include <linux/module.h>
+  #include <verifier/rcv.h>
+
+/* LDV_MODEL_FUNCTION_DEFINITION(name='strlen') Return integer result that more than zero. */
+  size_t strlen(const char * str) {
+    size_t res;
+    res = ldv_undef_int();
+    ldv_check_ret_val(res);
+/*LDV_COMMENT_RETURN Return positive number.*/
+    return res;
+  }
+/* LDV_MODEL_FUNCTION_DEFINITION(name='strnlen') Return integer result that more than zero. */
+  size_t strnlen(const char *s, size_t count)
+  {
+    size_t res;
+    res = ldv_undef_int();
+    ldv_check_ret_val(res);
+/*LDV_COMMENT_RETURN Return positive number.*/
+    return res;
+  }
+
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_len') Check that byte number is not negative because of this leads to integer underflow. */
+  void ldv_check_len(long int n)
+  {
+    /* LDV_COMMENT_ASSERT Byte number should not be less then 0. */
+    ldv_assert(n >= 0);
+  }
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_ret_val') Skip result if it less that zero. */
+  void ldv_check_ret_val(int res)
+  {
+    ldv_assume(res >= 0);
+  }
+
+}

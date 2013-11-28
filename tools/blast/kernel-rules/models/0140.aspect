@@ -1,0 +1,88 @@
+@include <kernel-model/ERR.aspect>
+
+before: file ("$this")
+{
+  #include <linux/netdevice.h>
+
+  extern struct net_device *ldv_alloc_netdev(void);
+  extern void ldv_free_netdev(void);
+
+  extern int ldv_register_netdev(void);
+  extern void ldv_unregister_netdev(void);
+} 
+
+around: call(struct net_device *alloc_netdev_mqs(..))
+  || call(struct net_device *alloc_etherdev_mqs(..))
+  || call(struct net_device *alloc_fddidev(..))
+{
+  return ldv_alloc_netdev();
+}
+
+around: call(void free_netdev(..))
+{
+  ldv_free_netdev();
+}
+
+
+around: call(int register_netdev(..))
+  || call(int register_candev(..))
+{
+  return ldv_register_netdev();
+}
+
+around: call(void unregister_netdev(..))
+  || call (void unregister_candev(..))
+  || call (void unregister_hdlc_device(..))
+  || call (static inline void unregister_netdevice(..))
+{
+  ldv_unregister_netdev();
+}
+
+
+after: file ("$this")
+{
+#include <linux/netdevice.h>
+#include <verifier/rcv.h>
+#include <kernel-model/ERR.inc>
+
+struct net_device *dev;
+int ldv_alloc = 0;
+int ldv_register = 0;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_alloc_netdev') */
+struct net_device *ldv_alloc_netdev(void) {
+  void *p = ldv_undef_ptr();
+  if (p) {
+    ldv_alloc = 1;
+    ldv_assume(p < LDV_PTR_MAX);
+    return (struct net_device *)p;
+  }
+  else return NULL;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_free_netdev') */
+void ldv_free_netdev(void) {
+  ldv_alloc = 0;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_register_netdev') */
+int ldv_register_netdev(void) {
+  if (ldv_undef_int()) {
+    ldv_register = 1;
+    return 0;
+  }
+  else return -1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_unregister_netdev') */
+void ldv_unregister_netdev(void) {
+  ldv_register = 0;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') */
+void ldv_check_final_state(void) {
+  ldv_assert(ldv_alloc == 0);
+  ldv_assert(ldv_register == 0);
+}
+
+} 

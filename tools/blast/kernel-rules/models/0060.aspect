@@ -1,0 +1,47 @@
+before: file ("$this")
+{
+#include <linux/list.h>
+
+extern void ldv_list_add(struct list_head *, struct list_head *);
+extern void ldv_list_del(struct list_head *);
+}
+
+around: execution(static inline void list_add(struct list_head *, struct list_head *))
+{
+  ldv_list_add($arg1, $arg2);
+}
+
+around: execution(static inline void list_del(struct list_head *))
+  || call(extern void list_del(struct list_head *))
+{
+  ldv_list_del($arg1);
+}
+
+
+after: file ("$this")
+{
+
+#include <linux/list.h>
+
+#include <verifier/rcv.h>
+
+struct list_head *elem = NULL;
+
+void ldv_list_add(struct list_head *new, struct list_head *head)
+{
+  if(new != NULL)
+  {
+    ldv_assert(new != elem);
+
+    if(ldv_undef_int())
+      elem = new;
+  }
+}
+
+void ldv_list_del(struct list_head *entry)
+{
+  if(entry == elem)
+    elem = NULL;
+}
+
+}

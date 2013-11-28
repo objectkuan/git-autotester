@@ -1,0 +1,43 @@
+before: file("$this")
+{
+// Provide model function prototypes before their usage.
+int ldv_module_license(void);
+int ldv_module_author(void);
+int ldv_module_description(void);
+}
+
+around: define(MODULE_LICENSE(_license))
+{
+  int ldv_module_license(void) { return 1; }
+}
+
+around: define(MODULE_AUTHOR(_author))
+{
+  int ldv_module_author(void) { return 1; }
+}
+
+around: define(MODULE_DESCRIPTION(_description))
+{
+  int ldv_module_description(void) { return 1; }
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') Check that module metadata was defined properly. */
+void ldv_check_final_state(void)
+{
+  /* LDV_COMMENT_ASSERT You should provide module license. */
+  ldv_assert(ldv_module_license() == 1);
+
+  /* LDV_COMMENT_ASSERT You should provide module author. */
+  ldv_assert(ldv_module_author() == 1);
+
+  /* LDV_COMMENT_ASSERT You should provide module description. */
+  ldv_assert(ldv_module_description() == 1);
+}
+
+}

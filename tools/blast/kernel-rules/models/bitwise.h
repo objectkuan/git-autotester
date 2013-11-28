@@ -1,0 +1,1 @@
+#define LDV_BITWISE 1

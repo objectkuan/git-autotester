@@ -1,0 +1,115 @@
+@include <kernel-model/ERR.aspect>
+
+before: file("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+
+#include <linux/usb.h>
+
+// Provide model function prototypes before their usage.
+void ldv_interface_to_usbdev(void);
+void ldv_usb_get_dev(void);
+void ldv_usb_put_dev(void);
+}
+
+
+// Change state state after aquiring a reference to usb_device
+after:	execution(static inline struct usb_device *interface_to_usbdev(..))
+{
+	ldv_interface_to_usbdev();
+}
+
+// Change state after increasing the reference counter with usb_get_dev
+after:	call(struct usb_device *usb_get_dev(..))
+{
+	ldv_usb_get_dev();
+}
+
+// Change state after decreasing the reference counter with usb_put_dev
+after:	call(void usb_put_dev(..))
+{
+	ldv_usb_put_dev();
+}
+
+
+after: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+
+#include <linux/usb.h>
+
+#include <verifier/rcv.h>		// For LDV auxiliary routines.
+#include <kernel-model/ERR.inc>
+
+// There are 3 possible states of usb device reference counter
+enum
+{
+	LDV_USB_DEV_ZERO_STATE = 0,	// Usb device reference hasn't been acquired
+	LDV_USB_DEV_ACQUIRED = 1,	// Usb device reference acquired
+	LDV_USB_DEV_INCREASED = 2	// Usb device reference counter increased
+};
+
+/* LDV_COMMENT_OTHER The model automaton state (one of thee possible ones). */
+int ldv_usb_dev_state = LDV_USB_DEV_ZERO_STATE;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_interface_to_usbdev') Change state state after acquiring a reference to usb_device. */
+void ldv_interface_to_usbdev(void)
+{
+	/* LDV_COMMENT_OTHER Initially we suppose this function is used to acquire a reference to usb_device. */
+	if (ldv_usb_dev_state == LDV_USB_DEV_ZERO_STATE)
+		/* LDV_COMMENT_CHANGE_STATE Usb device reference acquired. */
+		ldv_usb_dev_state = LDV_USB_DEV_ACQUIRED;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_get_dev') Change state after increasing the reference counter with usb_get_dev. */
+void ldv_usb_get_dev(void)
+{
+	/* LDV_COMMENT_OTHER Here the reference has surely been acquired somewhere. */
+	if (ldv_usb_dev_state < LDV_USB_DEV_ACQUIRED) {
+		/* LDV_COMMENT_CHANGE_STATE The reference has already been acquired. */
+		ldv_usb_dev_state = LDV_USB_DEV_ACQUIRED;
+	}
+	/* LDV_COMMENT_CHANGE_STATE Increase reference counter. */
+	ldv_usb_dev_state++;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_put_dev') Change state after decreasing the reference counter with usb_put_dev. */
+void ldv_usb_put_dev(void)
+{
+	/* LDV_COMMENT_ASSERT Check usb device reference counter has been increased. */
+	ldv_assert(ldv_usb_dev_state >= LDV_USB_DEV_INCREASED);
+	/* LDV_COMMENT_CHANGE_STATE Decrease reference counter. */
+	ldv_usb_dev_state--;
+	/* LDV_COMMENT_OTHER LDV_USB_DEV_ACQUIRED is special (for when the one has forgotten to increase the counter). Not intednded to be used here. */
+	if (ldv_usb_dev_state == LDV_USB_DEV_ACQUIRED) {
+		/* LDV_COMMENT_CHANGE_STATE Re-zero the model variable. */
+		ldv_usb_dev_state = LDV_USB_DEV_ZERO_STATE;
+	}
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_return_value_probe') Check the probe function leaved the model in the proper state. */
+void ldv_check_return_value_probe(int retval)
+{
+	/* LDV_COMMENT_OTHER Probe finished unsuccessfully and returned an error. */
+	if (retval) {
+		/* LDV_COMMENT_ASSERT Check usb device reference counter is not increased. */
+		ldv_assert(ldv_usb_dev_state < LDV_USB_DEV_INCREASED);
+		/* LDV_COMMENT_OTHER LDV_USB_DEV_ACQUIRED is special (for when the one has forgotten to increase the counter). Not this case. */
+		if (ldv_usb_dev_state == LDV_USB_DEV_ACQUIRED)
+			/* LDV_COMMENT_CHANGE_STATE Re-zero the model variable. */
+			ldv_usb_dev_state = LDV_USB_DEV_ZERO_STATE;
+	} // else	/* LDV_COMMENT_OTHER Probe finished successfully and returned 0. */
+//		/* LDV_COMMENT_ASSERT Check usb device reference counter is not acquired or has been increased. */
+//		ldv_assert(ldv_usb_dev_state != LDV_USB_DEV_ACQUIRED);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') Check that usb device reference hasn't been acquired or the counter has been decreased. */
+void ldv_check_final_state(void)
+{
+	/* LDV_COMMENT_ASSERT Check that usb device reference hasn't been acquired or the counter has been decreased. */
+	ldv_assert(ldv_usb_dev_state < LDV_USB_DEV_INCREASED);
+}
+
+}

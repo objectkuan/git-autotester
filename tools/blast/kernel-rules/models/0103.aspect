@@ -1,0 +1,75 @@
+before: file("$this")
+{
+// Provide model function prototypes before their usage.
+void ldv_check_msleep_arg(unsigned int msecs);
+}
+
+// Ensure that msleep argument isn't in jiffies.
+before: call(void msleep(..))
+{
+	ldv_check_msleep_arg($arg1);
+}
+
+
+after: file ("$this")
+{
+#include <linux/time.h>
+
+#include <verifier/rcv.h>
+
+/* Special "unique" constant that means that a given value is in jiffies. */
+#define LDV_JIFFIES 12345
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_msleep_arg') Check that msleep argument is not in jiffies. */
+void ldv_check_msleep_arg(unsigned int msecs)
+{
+/* LDV_COMMENT_ASSERT msleep function could not be called with an argument in jiffies. */
+	ldv_assert(msecs != LDV_JIFFIES);
+}
+
+/* We have to define this function explicitly instead of writing aspect for it
+ * because of #2726 issue. */
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='msecs_to_jiffies') Return a special value in jiffies. */
+unsigned long msecs_to_jiffies(const unsigned int m)
+{
+/* LDV_COMMENT_RETURN Return a value in jiffies. */
+	return LDV_JIFFIES;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='usecs_to_jiffies') Return a special value in jiffies. */
+unsigned long usecs_to_jiffies(const unsigned int u)
+{
+/* LDV_COMMENT_RETURN Return a value in jiffies. */
+	return LDV_JIFFIES;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='timespec_to_jiffies') Return a special value in jiffies. */
+unsigned long timespec_to_jiffies(const struct timespec *value)
+{
+/* LDV_COMMENT_RETURN Return a value in jiffies. */
+	return LDV_JIFFIES;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='timeval_to_jiffies') Return a special value in jiffies. */
+unsigned long timeval_to_jiffies(const struct timeval *value)
+{
+/* LDV_COMMENT_RETURN Return a value in jiffies. */
+	return LDV_JIFFIES;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='clock_t_to_jiffies') Return a special value in jiffies. */
+unsigned long clock_t_to_jiffies(unsigned long x)
+{
+/* LDV_COMMENT_RETURN Return a value in jiffies. */
+	return LDV_JIFFIES;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='jiffies_to_msecs') Return a special value in jiffies. */
+inline unsigned int jiffies_to_msecs(const unsigned long j)
+{
+/* LDV_COMMENT_RETURN Return a value in msecs. */
+	return 0;
+}
+
+
+}

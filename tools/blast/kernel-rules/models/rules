@@ -1,0 +1,46 @@
+0008.aspect:Module get/put:Driver becomes not available for unloading permanently :Once you blocked a driver using `try_module_get()` you should unblock it by `module_put()`.
+0009.aspect:Align pages:Calling a function of low-level memory allocation to request for block with a size that is not a multiple of virtual memory page size.:
+0010.aspect:Atomic allocation in interrupt context:Usage of GFP_ATOMIC flag as a parameter of memory allocation functions in an interrupt context.:Use GFP_ATOMIC flag in a context of interrupt instead of GFP_KERNEL as parameter of memory allocation functions.
+0018.aspect:Failed cdev_add:Correctly releasing objects after failed cdev_add:
+0026.aspect:Gendisk alloc,del,add,put:Releasing resources of gendisk interface:
+0027.aspect:Request queues init/cleanup:Correct use of request queues for block devices:
+0029.aspect:PCI pool create/destroy, alloc/free:Leaving allocated memory units in the coherent-memory pool being freed:All allocated memory in a pool should be freed before destroying the pool.
+0032.aspect:Mutex lock/unlock:Locking a mutex twice or unlocking without prior locking:You should not acquire or release the same mutex twice in the same process. All locked mutexes should be unlocked at finalization.
+0037.aspect:Delay in probe_irq on/off:Making no delay when probing for IRQs:You should wait for some time between `probe_irq_on()/probe_irq_off(...)` calls.
+0039.aspect:Spinlocks lock/unlock:Usage of spin lock and unlock functions:It’s not allowed to acquire spin_lock twice. It’s not allowed to release not acquired spin_lock. At the end all spin_lock should be released. It’s not allowed to re-release a lock by spin_unlock/spin_unlock_irqrestore functions.
+0040.aspect:Urb initialization:Initialization of USB request block:
+0043.aspect:Memory allocation inside spinlocks:Using a blocking memory allocation when spinlock is held:You should use `GFP_ATOMIC` flag when calling memory allocation functions when spinlock is held.
+0049.aspect:Sleeping under spinlock:Sleeping in atomic context under spinlock:You should not call a function which might sleep when holding a spinlock.
+0054.aspect:Extended spinlock initialization:Using extended style of spinlock initialization:
+0060.aspect:Linked list double add:Inserting an element to a linked list if this element is already there:You should not invoke `list_add()` for an element, which is already in the list.
+0064.aspect:Buffer size for strlcat/strncat:Incorrect size for resulting buffer of strlcat and strncat functions:
+0073.aspect:Single free_irq:Function free_irq should be called only once:
+0077.aspect:NOIO allocation under usb_lock:Not disabling IO during memory allocation while holding a USB device lock:You should use `GFP_NOIO` instead of `GFP_KERNEL` for memory allocations between `usb_lock_device()` and `usb_unlock_device()` invocations.
+0100.aspect:Possible TTY NULL dereference:Dereferencing `NULL` pointer to struct tty_struct when it's passed to TTY processing functions:Make sure that you check return value of kernel core functions returning pointers to tty_struct (such as `tty_port_tty_get()`) before passing the aquired pointer to TTY processing functions (such as `tty_insert_flip_string()`)
+0101.aspect:blk requests:All obtained blk requests should be put after all:You should call blk_put_request() after blk_get_request()/blk_make_request() calling
+0102.aspect:::
+0103.aspect:::
+0104.aspect:::
+0106.aspect:The gadget driver (de)registration:The gadget driver, char device number, and class device should be correctly (un)registered:You sould not (un)register the same resource (gadget driver, device number or class device) twice in the same driver. Every corresponding resource  sould be unregistered at finalization.
+0107.aspect:::
+0108.aspect:::
+0109.aspect:::
+0110.aspect:::Correct initialization of spin_lock
+0111.aspect:Underflow in call copy_from_user() etc.:Check that integer underflow doesn't happen in call of copy_from_user() etc.:Before call copy_from_user(), copy_to_user, copy_in_user() and other similar functions we must check their unsigned long argument.
+0112.aspect:::
+0114.aspect:netif_carrier_off() and netif_stop_queue() call after register_netdev() call:netif_carrier_off() and netif_stop_queue() should be called after register_netdev():
+0117.aspect:Usage of functions local_irq_*:local_irq_save/local_irq_restore and local_irq_enable/local_irq_disable pairs one another nesting check:local_irq_save/local_irq_restore && local_irq_enable/local_irq_disable pairs one another nesting check
+0118.aspect:RW Locks lock/unlock:Correct use of reader-writer spinlocks:Multiple write locks (unlocks) are not permitted. Read lock is not permitted after write lock. Read (write) unlock is not permitted before read (write) lock. Read and write locks must be freed at the end.
+0119.aspect:probe() return -EINTR:Function probe() return -EINTR:Function probe() shouldn't return -EINTR
+0121.aspect:::
+0129.aspect:Args of find_next_zero_bit:correct call to find_next_zero_bit() with arguments in the right order:find_next_zero_bit() is called with arguments in the wrong order
+0131.aspect:hrtimer start/stop:Driver tries to stop an hrtimer which was never started:
+0132.aspect:Refcounting with usb_get_dev()/usb_put_dev():Imbalance in reference counting for struct usb_device with usb_get_dev()/usb_put_dev():Each live reference to a usb device should be refcounted.Drivers for USB interfaces should normally record such references in their probe() methods, when they bind to an interface, and release them by calling usb_put_dev(), in their disconnect() methods.
+0134.aspect:Error handling in probe():Incomplete error condition propagation (error handling for critical functions) in probe():The error value returned by some critical functions called from probe() handler should be correctly propagated.
+0136.aspect:usb_deregister() / usb_serial_deregister():usb_deregister() should be called before usb_serial_deregister() when the device is plugged in:
+0138.aspect:::
+0139.aspect:napi_enable()/napi_disable():napi_enable() must be paired with napi_disable():
+0140.aspect:::
+0142.aspect:Usage of mod_timer():Absolute time for mode_timer().:It's necessary to use absolute time instead of relative for mode_timer().
+0146.aspect:RCU read sections nesting:Mixing operations of RCU nested read sections of different types:It is prohibited to mix start of one type of section with end of another type of section.
+0147.aspect:RCU update operations inside read sections:RCU update operations should not be used inside RCU read sections:It is prohibited to call update operations inside RCU read section.

@@ -1,0 +1,169 @@
+before: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/mutex.h>
+
+extern int ldv_mutex_lock_interruptible(struct mutex *lock);
+extern int ldv_mutex_lock_killable(struct mutex *lock);
+extern void ldv_mutex_lock(struct mutex *lock);
+}
+
+
+around: define(mutex_lock_interruptible(lock))
+{
+ldv_mutex_lock_interruptible(lock)
+}
+
+around: define(mutex_lock_killable(lock))
+{
+ldv_mutex_lock_killable(lock)
+}
+
+around: define(mutex_lock(lock))
+{
+ldv_mutex_lock(lock)
+}
+
+before: call(extern int mutex_lock_interruptible(struct mutex *))
+{
+  ldv_mutex_lock_interruptible($arg1);
+}
+
+before: call(extern int mutex_lock_killable(struct mutex *))
+{
+  ldv_mutex_lock_killable($arg1);
+}
+
+before: call(extern void mutex_lock(struct mutex *))
+{
+  ldv_mutex_lock($arg1);
+}
+
+
+after: file ("$this")
+{
+
+#include <linux/kernel.h>
+#include <linux/mutex.h>
+
+#include <verifier/rcv.h>
+
+//extern int LDV_IN_INTERRUPT;
+
+int ldv_mutex = 1;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldvmutex_lock_interruptible') Check that the mutex was unlocked and nondeterministically lock it. Return the corresponding error code on fails*/
+int /*__must_check*/ ldv_mutex_lock_interruptible(struct mutex *lock)
+{
+  int nondetermined;
+
+  /* LDV_COMMENT_ASSERT This must not be done in interrupting*/
+  //ldv_assert(LDV_IN_INTERRUPT == 1);
+  /* LDV_COMMENT_ASSERT Mutex must be unlocked*/
+  ldv_assert(ldv_mutex == 1);
+
+  /* LDV_COMMENT_OTHER Construct the nondetermined result*/
+  nondetermined = ldv_undef_int();
+
+  /* LDV_COMMENT_ASSERT Nondeterministically lock the mutex*/
+  if (nondetermined)
+  {
+    /* LDV_COMMENT_CHANGE_STATE Lock the mutex*/
+    ldv_mutex = 2;
+    /* LDV_COMMENT_RETURN Finish with success*/
+    return 0;
+  }
+  else
+  {
+    /* LDV_COMMENT_RETURN Finish with the fail. The mutex is keeped unlocked*/
+    return -EINTR;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_mutex_lock_killable') Check that the mutex wasn unlocked and nondeterministically lock it. Return the corresponding error code on fails*/
+int __must_check ldv_mutex_lock_killable(struct mutex *lock)
+{
+  int nondetermined;
+
+  /* LDV_COMMENT_ASSERT This must not be done in interrupting*/
+  //ldv_assert(LDV_IN_INTERRUPT == 1);
+  /* LDV_COMMENT_ASSERT Mutex must be unlocked*/
+  ldv_assert(ldv_mutex == 1);
+
+  /* LDV_COMMENT_OTHER Construct the nondetermined result*/
+  nondetermined = ldv_undef_int();
+
+  /* LDV_COMMENT_ASSERT Nondeterministically lock the mutex*/
+  if (nondetermined)
+  {
+    /* LDV_COMMENT_CHANGE_STATE Lock the mutex*/
+    ldv_mutex = 2;
+    /* LDV_COMMENT_RETURN Finish with success*/
+    return 0;
+  }
+  else
+  {
+    /* LDV_COMMENT_RETURN Finish with the fail. The mutex is keeped unlocked*/
+    return -EINTR;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_mutex_lock') Check that the mutex was not locked and lock it*/
+void ldv_mutex_lock(struct mutex *lock)
+{
+  /* LDV_COMMENT_ASSERT This must not be done in interrupting*/
+  //ldv_assert(LDV_IN_INTERRUPT == 1);
+  /* LDV_COMMENT_ASSERT Mutex must be unlocked*/
+  ldv_assert(ldv_mutex == 1);
+  /* LDV_COMMENT_CHANGE_STATE Lock the mutex*/
+  ldv_mutex = 2;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='mutex_trylock') Check that the mutex was not locked and nondeterministically lock it. Return 0 on fails*/
+int mutex_trylock(struct mutex *lock)
+{
+  int nondetermined;
+
+  /* LDV_COMMENT_ASSERT This must not be done in interrupting*/
+  //ldv_assert(LDV_IN_INTERRUPT == 1);
+  /* LDV_COMMENT_ASSERT Mutex must be unlocked*/
+  ldv_assert(ldv_mutex == 1);
+
+  /* LDV_COMMENT_OTHER Construct the nondetermined result*/
+  nondetermined = ldv_undef_int();
+
+  /* LDV_COMMENT_ASSERT Nondeterministically lock the mutex*/
+  if (nondetermined)
+  {
+    /* LDV_COMMENT_CHANGE_STATE Lock the mutex*/
+    ldv_mutex = 2;
+    /* LDV_COMMENT_RETURN Finish with success*/
+    return 1;
+  }
+  else
+  {
+    /* LDV_COMMENT_RETURN Finish with fail*/
+    return 0;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='mutex_unlock') Check that the mutex was locked and unlock it*/
+void mutex_unlock(struct mutex *lock)
+{
+  /* LDV_COMMENT_ASSERT This must not be done in interrupting*/
+  //ldv_assert(LDV_IN_INTERRUPT == 1);
+  /* LDV_COMMENT_ASSERT Mutex must be locked*/
+  ldv_assert(ldv_mutex == 2);
+
+  /* LDV_COMMENT_CHANGE_STATE Unlock the mutex*/
+  ldv_mutex = 1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='check_final_state') Check that the mutex is unlocked at the end*/
+void ldv_check_final_state(void)
+{
+  /* LDV_COMMENT_ASSERT The mutex must be unlocked at the end*/
+  ldv_assert(ldv_mutex == 1);
+}
+
+}

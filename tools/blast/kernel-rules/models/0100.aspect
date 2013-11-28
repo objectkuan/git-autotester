@@ -1,0 +1,102 @@
+before: file("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+
+#include <linux/tty.h>
+#include <linux/tty_flip.h>
+
+// Provide model function prototypes before their usage.
+void ldv_got_tty(struct tty_struct *tty);
+void ldv_check_tty(struct tty_struct *tty);
+}
+
+// Check the first parameter (TTY) of a given function.
+before:    call(int tty_buffer_request_room(..))
+	|| call(int tty_insert_flip_string_fixed_flag(..))
+	|| call(void tty_schedule_flip(..))
+	|| execution(static inline int tty_insert_flip_char(..))
+	|| execution(static inline int tty_insert_flip_string(..))
+	|| call(void tty_wait_until_sent(..))
+	|| call(void stop_tty(..))
+	|| call(void start_tty(..))
+	|| call(int tty_chars_in_buffer(..))
+	|| call(int tty_write_room(..))
+	|| call(void tty_driver_flush_buffer(..))
+	|| call(void tty_throttle(..))
+	|| call(void tty_unthrottle(..))
+	|| call(void tty_hangup(..))
+	|| call(void tty_flip_buffer_push(..))
+	|| call(speed_t tty_get_baud_rate(..))
+	|| call(void tty_encode_baud_rate(..))
+	|| call(int tty_set_termios(..))
+	|| call(struct tty_ldisc *tty_ldisc_ref(..))
+	|| call(void tty_wakeup(..))
+	|| call(void tty_ldisc_flush(..))
+	|| call(int tty_mode_ioctl(..))
+{
+	ldv_check_tty($arg1);
+}
+
+// Check the second parameter (TTY) of a given function.
+before:    call(int tty_standard_install(..))
+	|| call(int tty_port_block_til_ready(..))
+	|| call(int tty_port_close_start(..))
+	|| call(void tty_port_close_end(..))
+	|| call(void tty_port_close(..))
+	|| call(int tty_port_open(..))
+{
+	ldv_check_tty($arg2);
+}
+
+// Save latest model function return value
+after:     call(struct tty_struct *tty_port_tty_get(..))
+	|| call(struct tty_struct *get_current_tty(..))
+	|| execution(static inline struct tty_struct *tty_kref_get(..))
+{
+	ldv_got_tty($res);
+}
+
+after: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+
+#include <linux/tty.h>
+#include <linux/tty_flip.h>
+
+#include <verifier/rcv.h>		// For LDV auxiliary routines.
+
+/* LDV_COMMENT_OTHER The latest tty pointer returned by some model function. */
+struct tty_struct *ldv_latest_tty;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_initialize') Model initialization. */
+void ldv_initialize() {
+	/* LDV_COMMENT_OTHER A trick to consider only the case when TTY is the one previously returned by a model function. */
+	ldv_latest_tty = (struct tty_struct *)ldv_undef_ptr();
+	ldv_assume(ldv_latest_tty != NULL);
+}
+
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_handler_precall') Model reinitialization. Sould be called before each driver handler. */
+void ldv_handler_precall() {
+	/* LDV_COMMENT_OTHER A trick to consider only the case when TTY is the one previously returned by a model function. */
+	ldv_latest_tty = (struct tty_struct *)ldv_undef_ptr();
+	ldv_assume(ldv_latest_tty != NULL);
+}
+
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_got_tty') Save the latest tty pointer returned by a model function. */
+void ldv_got_tty(struct tty_struct *tty)
+{
+	/* LDV_COMMENT_CHANGE_STATE Latest model function return value saved. */
+	ldv_latest_tty = tty;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_tty') Check whether TTY is NULL or not. */
+void ldv_check_tty(struct tty_struct *tty)
+{
+	/* LDV_COMMENT_ASSERT TTY should not be NULL in case it was previously returned by a model function. */
+	ldv_assert(tty != ldv_latest_tty || tty);
+}
+}

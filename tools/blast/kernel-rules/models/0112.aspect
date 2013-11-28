@@ -1,0 +1,25 @@
+before: file("$this")
+{
+// Provide model function prototypes before their usage.
+void ldv_check_init(unsigned int n);
+}
+
+after: call(static void p54_tx_80211_header(..))
+{
+  ldv_check_init(*$arg5);
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_init') Check that variable is initialized before usage. */
+void ldv_check_init(unsigned int n)
+{
+  /* LDV_COMMENT_ASSERT extra_len should be 0 or IEEE80211_MAX_TIM_LEN at this point. */
+  ldv_assert(n == 0 || n == IEEE80211_MAX_TIM_LEN);
+}
+
+}

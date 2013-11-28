@@ -1,0 +1,109 @@
+before: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/spinlock.h>
+
+extern unsigned long ldv_spin_lock_irqsave(spinlock_t *lock);
+extern void ldv_spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags);
+extern void ldv_spin_lock(spinlock_t *lock);
+extern void ldv_spin_unlock(spinlock_t *lock);
+extern int ldv_spin_trylock(spinlock_t *lock);
+}
+
+around : define(spin_lock_irqsave(lock, flags))
+{
+ldv_spin_lock_irqsave(lock)
+}
+
+around : define(spin_unlock_irqrestore(lock, flags))
+{
+ldv_spin_unlock_irqrestore(lock, flags)
+}
+
+/* This is added since in the latest kernels (for example 2.6.33.4) the define
+ * is exchanged with the static inline function. */ 
+before: execution(static inline void spin_unlock_irqrestore(lock, flags))
+{
+  ldv_spin_unlock_irqrestore(lock, flags);
+}
+
+around : define(spin_lock(lock))
+{
+ldv_spin_lock(lock)
+}
+
+around : define(spin_unlock(lock))
+{
+ldv_spin_unlock(lock)
+}
+
+after: file ("$this") 
+{
+#include <linux/kernel.h>
+#include <linux/spinlock.h>
+
+/* temporarally commented 
+long __builtin_expect(long val, long res) {
+	return val;
+}
+*/
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_STATE Lock state*/
+int ldv_lock = 1;
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Acquires the lock and checks for double spin lock*/
+unsigned long  ldv_spin_lock_irqsave(spinlock_t *lock) {
+ /* LDV_COMMENT_ASSERT Lock should be in a free state*/
+ ldv_assert(ldv_lock==1);
+ /* LDV_COMMENT_CHANGE_STATE Goto locked state*/
+ ldv_lock=2;
+ /* LDV_COMMENT_RETURN Return arbitrary values of irqs*/
+ return ldv_undef_ulong();
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Releases the lock and checks that lock was acquired before*/
+void  ldv_spin_unlock_irqrestore(spinlock_t *lock, unsigned long flags)  {
+ /* LDV_COMMENT_ASSERT Lock should be in a locked state*/
+ ldv_assert(ldv_lock!=1);
+ /* LDV_COMMENT_CHANGE_STATE Goto free state*/
+ ldv_lock=1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Acquires the lock and checks for double spin lock*/
+void ldv_spin_lock(spinlock_t *lock) {
+ /* LDV_COMMENT_ASSERT Lock should be in a free state*/
+ ldv_assert(ldv_lock==1);
+ /* LDV_COMMENT_CHANGE_STATE Goto locked state*/
+ ldv_lock=2;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Releases the lock and checks that lock was acquired before*/
+void  ldv_spin_unlock(spinlock_t *lock)  {
+ ldv_assert(ldv_lock!=1);
+ /* LDV_COMMENT_CHANGE_STATE Goto free state*/
+ ldv_lock=1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Tryies to acquire the lock and returns one if successful*/
+int ldv_spin_trylock(spinlock_t *lock) {
+ /* LDV_COMMENT_OTHER If lock is free choose arbitrary action*/
+ if(ldv_lock==1 && ldv_undef_int()) {
+ 	/* LDV_COMMENT_CHANGE_STATE Goto locked state*/
+	ldv_lock=2;
+ 	/* LDV_COMMENT_RETURN The lock is acquired*/
+	return 1;
+ } else {
+ 	/* LDV_COMMENT_RETURN The lock is not acquired*/
+	return 0;
+ }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_CALL Checks that all locks were released*/
+void ldv_check_final_state(void) {
+ /* LDV_COMMENT_ASSERT Lock should be in a free state*/
+ ldv_assert(ldv_lock==1);
+}
+
+}

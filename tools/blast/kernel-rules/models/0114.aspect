@@ -1,0 +1,59 @@
+before: file ("$this")
+{
+	extern void ldv_turn_off_carrier_detection(void);
+	extern int ldv_register_netdev(void);
+}
+
+around: call(void netif_carrier_off(..))
+{
+	ldv_turn_off_carrier_detection();
+}
+
+around: call(int register_netdev(..))
+	|| call(int register_netdevice(..))
+	|| call(int register_candev(..))
+{
+	return ldv_register_netdev();
+}
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_STATE Initialize the auxiliary variable */
+int ldv_carrier = 2;
+
+/* LDV_COMMENT_MODEL_STATE Initialize the auxiliary variable */
+int ldv_register = 0;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_register_netdev') */
+int ldv_register_netdev(void) {
+/* LDV_COMMENT_OTHER Construct the nondetermined result*/
+	if (ldv_undef_int()) {
+/* LDV_COMMENT_CHANGE_STATE The equality of 1 means a successful call register_netdev()*/
+		ldv_register = 1;
+/* LDV_COMMENT_ASSERT then check final state*/
+		ldv_assert(ldv_carrier);
+/* LDV_COMMENT_RETURN The function was successfully called*/
+		return 0;
+	}
+/* LDV_COMMENT_RETURN The function wasn't successfully called*/
+	else
+	return -1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_turn_off_carrier_detection') */
+void ldv_turn_off_carrier_detection(void) {
+/* LDV_COMMENT_OTHER If this is the first call of this function and register_netdev() is not called yet, then*/
+	if ((ldv_register == 0) && (ldv_carrier == 2))
+/* LDV_COMMENT_CHANGE_STATE error*/
+		ldv_carrier = 0;
+/* LDV_COMMENT_OTHER If this is the first call of this function and register_netdev() is already called, then*/
+	else if (ldv_carrier == 2)
+/* LDV_COMMENT_CHANGE_STATE ok*/
+		ldv_carrier = 1;
+}
+
+}
+

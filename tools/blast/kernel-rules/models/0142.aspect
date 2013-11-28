@@ -1,0 +1,54 @@
+before: file("$this")
+{
+  #include <linux/kernel.h>
+  #include <linux/module.h>
+  #include <linux/timer.h>
+  //There is jiffies and other importent functions here.
+  #include <linux/jiffies.h>
+  // Provide model function prototypes before their usage.
+  void ldv_check_jiff(long x);
+}
+/* Check the second argument of mod_timer() */
+before: call(int mod_timer(..))
+{
+  ldv_check_jiff($arg2);
+}
+
+after: file ("$this")
+{
+  #include <linux/kernel.h>
+  #include <linux/module.h>
+  #include <verifier/rcv.h>
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='round_jiffies_up') Building body of this function to check value of it argument. */
+  unsigned long round_jiffies_up(unsigned long j)
+  {
+    ldv_assume(j >= 0);
+/*LDV_COMMENT_RETURN Return argument of this function and skip cases when it is less than zero. */
+    return j;
+  }
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='msecs_to_jiffies') Building body of this function to check its result. */
+  unsigned long msecs_to_jiffies(const unsigned int m)
+  {
+    long x;
+    x = m;
+    ldv_assume(x >= 0);
+/*LDV_COMMENT_RETURN Return any non-negative number.*/
+    return x;
+  }
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='usecs_to_jiffies') Building body of this function to check its result. */
+  unsigned long usecs_to_jiffies(const unsigned int u)
+  {
+    long x;
+    x = u;
+    ldv_assume(x >= 0);
+/*LDV_COMMENT_RETURN Return any non-negative number.*/
+    return x;
+  }
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_jiff') Check if the second argument of function mod_timer() is more than jiffies. */
+  void ldv_check_jiff(long x)
+  {
+    /* LDV_COMMENT_ASSERT The 2nd argument of mod_timer() must not be less than jiffies. */
+    ldv_assert(x >= jiffies);
+  }
+}

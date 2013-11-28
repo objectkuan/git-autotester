@@ -1,0 +1,33 @@
+[%# Use '~' at the end of each directive here to avoid adittional whitespaces
+    in files including this one. ~%]
+
+[% # Generate
+   BLOCK make_human_sign %]
+  [% IF sign %]
+    [% sign_text = " '$sign'"; sign_id = "_$sign" %]
+  [% ELSE %]
+    [% sign_text = ''; sign_id = '' %]
+  [% END %]
+[% END ~%]
+
+[% # Generate different stuff as argument signatures.
+   MACRO arg_sign(arg_numb) BLOCK %]
+  [% IF signs %]
+    [% # Generate nothing to obtain a model without reroting.
+       IF signs.size == 1 && signs.first == '' %]
+    [% # Generate aspect body patterns as argument signatures.
+       ELSE ~%]
+      _$arg_sign[% arg_numb %]
+    [% END %]
+  [% # Generate information requests to obtain argument signatures.
+     ELSE ~%]
+    $fprintf<$env<LDV_REROUTE_INFO>,"%s\n",$arg_sign[% arg_numb %]>
+  [% END %]
+[% END ~%]
+
+[% # Generate information requests to obtain actual macro arguments.
+   MACRO arg_val(arg_numb) BLOCK %]
+  [% UNLESS static_inits %]
+    $fprintf<$env<LDV_STATIC_INITS_INFO>,"%s\n",$arg_val[% arg_numb %]>
+  [% END %]
+[% END ~%]

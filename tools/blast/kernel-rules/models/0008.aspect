@@ -1,0 +1,140 @@
+before: file ("$this")
+{
+#include <linux/module.h>
+extern int ldv_try_module_get(struct module*);
+extern void ldv_module_get(struct module*);
+extern void ldv_module_put(struct module*);
+extern unsigned int ldv_module_refcount(void);
+extern void ldv_module_put_and_exit();
+}
+
+around: call(static inline int try_module_get(..))
+{
+  return ldv_try_module_get($arg1);
+}
+
+around: call(bool try_module_get(..))
+{
+  return ldv_try_module_get($arg1);
+}
+
+around: call(static inline void __module_get(..))
+{
+  ldv_module_get($arg1);
+}
+
+around: call(void __module_get(..))
+{
+  ldv_module_get($arg1);
+}
+
+around: call(void module_put(..))
+{
+  ldv_module_put($arg1);
+}
+
+around: call(static inline void module_put(..))
+{
+  ldv_module_put($arg1);
+}
+
+around: define(module_put_and_exit(code))
+{
+  ldv_module_put_and_exit();
+}
+
+around: call(unsigned int module_refcount(..))
+{
+  return ldv_module_refcount();
+}
+
+around: call(unsigned long module_refcount(..))
+{
+  return ldv_module_refcount();
+}
+
+/* nonseekable_open is a generic function, and it always returns zero in addition to setting some flags.  For the purpose of this model, we assume it merely returns 0. */
+around: call(int nonseekable_open(..))
+{
+  return 0;
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* Module locks counter (1 is the initial state; it shouldn't go lower). We do not distinguish different modules. */
+int ldv_module_refcounter = 1;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_module_get') Increment module reference counter (unless the module pointer is NULL). */
+void ldv_module_get(struct module *module)
+{
+  /* LDV_COMMENT_OTHER Do nothing if the module pointer is NULL */
+  if (module){
+    /* LDV_COMMENT_CHANGE_STATE Increment module reference counter. */
+    ldv_module_refcounter++;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_try_module_get') Try to get module.  The operation may succeed and return 1, or fail and return 0. */
+int ldv_try_module_get(struct module *module)
+{
+  int module_get_succeeded;
+
+  /* LDV_COMMENT_OTHER Do nothing if the module pointer is NULL */
+  if (module){
+
+    /* LDV_COMMENT_OTHER Model success or failure of getting the module. */
+    module_get_succeeded = ldv_undef_int();
+
+    if (module_get_succeeded == 1) {
+      /* LDV_COMMENT_CHANGE_STATE Increment module reference counter. */
+      ldv_module_refcounter++;
+      /* LDV_COMMENT_RETURN Return 1 telling about success. */
+      return 1;
+    }
+    else
+    {
+      /* LDV_COMMENT_RETURN Return 0 telling that module get has failed.. */
+      return 0;
+    }
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_module_put') Put module (unless module pointer is zero).  Check if the module reference counter was greater than zero. */
+void ldv_module_put(struct module *module)
+{
+  /* LDV_COMMENT_OTHER Do nothing if the module pointer is NULL */
+  if (module){
+    /* LDV_COMMENT_ASSERT This assertion fails if the module was put more times than it was got */
+    ldv_assert(ldv_module_refcounter > 1);
+    /* LDV_COMMENT_CHANGE_STATE Decrease reference counter thus putting the module. */
+    ldv_module_refcounter--;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_module_put_and_exit') Put the module and stop execution. */
+void ldv_module_put_and_exit()
+{
+  ldv_module_put((struct module*)1);
+  /* LDV_COMMENT_OTHER Stop execution. */
+  LDV_STOP: goto LDV_STOP;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_module_refcount') Get the reference counter of the module. */
+unsigned int ldv_module_refcount(void)
+{
+  /* LDV_COMMENT_RETURN Return reference counter */
+  return ldv_module_refcounter - 1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') At the end of execution, module reference counter must be the same as at the beginning. */
+void ldv_check_final_state(void)
+{
+  /* LDV_COMMENT_ASSERT If this assertion is violated, then the module was put somewhere duiring the execution, and wasn't got! */
+  ldv_assert(ldv_module_refcounter == 1);
+}
+
+}

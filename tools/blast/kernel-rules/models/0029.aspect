@@ -1,0 +1,10 @@
+// This rule doesn't require aspectator at the moment!
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+#include "0029.c"
+
+}

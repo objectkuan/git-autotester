@@ -1,0 +1,43 @@
+before: file ("$this")
+{
+#include <linux/kernel.h>
+extern char *ldv_env_strncat(char *dest, const char *src, size_t count, size_t size_of_dest);
+}
+
+
+before: call(extern char * strncat(char *, const char *, __kernel_size_t))
+{
+/*
+  $arg_size1 is an array size of the first parameter in case when it's a
+  stack variable having an one-dimensional array type with known size.
+  Otherwise it's -1.
+*/
+  if($arg_size1 !=- 1)
+  {
+    ldv_env_strncat($arg1, $arg2, $arg3, $arg_size1);
+  }
+}
+
+
+after: file ("$this")
+{
+
+#include <linux/kernel.h>
+#include <linux/string.h>
+
+#include <verifier/rcv.h>
+
+char *ldv_env_strncat(char *dest, const char *src, size_t count, size_t size_of_dest)
+{
+  /* In fact the following condition must be true:
+   * strlen(dest) + count < sizeof_of_dest
+   * But due to lack of blast with array processing we can't use this.
+   * So this rule is good just for cases when something like this is
+   * used: strncat(buf, string, sizeof(buf)) where buf is char buf[n].
+   */
+  ldv_assert(count < size_of_dest);
+
+  return (char *)ldv_undef_ptr();
+}
+
+}

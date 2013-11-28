@@ -1,0 +1,57 @@
+@include <kernel-model/ERR.aspect>
+
+before: file("$this")
+{
+#include <linux/hrtimer.h>
+
+// Provide model function prototypes before their usage.
+void ldv_start(void);
+void ldv_cancel(void);
+}
+
+// Error processing interface models.
+//@include "linux/err.aspect"
+
+after: call (int __hrtimer_start_range_ns(..)) || call (int hrtimer_start(..)) || call (int oprofile_start(..)) || call (void __oprofile_hrtimer_start(..)) || call (struct hrtimer_clock_base *lock_hrtimer_base(..))
+{
+  ldv_start();
+}
+
+before: call(int hrtimer_try_to_cancel(..))
+{
+  ldv_cancel();
+}
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+#include <kernel-model/ERR.inc>
+
+// There are 2 possible states of hrtimer
+	enum
+	{
+		LDV_HRTIMER_ON, //hrtimer was started
+		LDV_HRTIMER_OFF //hrtimer wasn't started
+	};
+
+	/* LDV_COMMENT_CHANGE_STATE At the beginning hrtimer is off. */
+	int ldv_hrtimer = LDV_HRTIMER_OFF;
+	
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_start') Change the state of hrtimer. */
+	void ldv_start(void)
+	{
+		/* LDV_COMMENT_CHANGE_STATE hrtimer was started. */
+		ldv_hrtimer = LDV_HRTIMER_ON;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_cancel') Check that the hrtimer was started, change the state of it. */
+	void ldv_cancel(void)
+	{
+		/* LDV_COMMENT_ASSERT hrtimer should be started before cancel. */
+		ldv_assert(ldv_hrtimer == LDV_HRTIMER_ON);
+		/* LDV_COMMENT_CHANGE_STATE hrtimer is off. */
+		ldv_hrtimer = LDV_HRTIMER_OFF;
+	}	
+
+}

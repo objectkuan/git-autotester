@@ -1,0 +1,6 @@
+new: file(LDV_COMMON_MODEL)
+{
+
+#include <verifier/rcv.h>
+
+}

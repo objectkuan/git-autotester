@@ -1,0 +1,24 @@
+before: file ("$this")
+{
+extern void ldv_always_fail(void);
+}
+
+// Break exactly after program enter.
+// Sorry functionality with wildcard in names was stayed in the development state...
+before: execution(void ldv_main0(..)) || execution(void ldv_main1(..)) || execution(void ldv_main2(..))
+{
+  ldv_always_fail();
+}
+
+
+new: file(LDV_COMMON_MODEL)
+{
+
+#include <verifier/rcv.h>
+
+void ldv_always_fail(void)
+{
+  ldv_assert(0);
+}
+
+}

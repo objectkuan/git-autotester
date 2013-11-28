@@ -1,0 +1,65 @@
+before: file("$this")
+{
+// Provide model function prototypes before their usage.
+void ldv_alloc(void);
+void ldv_free(void);
+}
+
+// Here workaround is used (see issue #2734).
+around: execution(static inline void *kzalloc(..))
+{
+  void *res;
+
+  res = $proceed;
+
+  // Memory is allocated if kzalloc returned nonzero value.
+  if (res != 0)
+  {
+    ldv_alloc();
+  }
+
+  return res;
+}
+
+after: call(void kfree(..))
+{
+  ldv_free();
+}
+
+// Workaround to find exactly the bug described in commit c0cc359.
+after: call(int usb_set_interface(..))
+{
+  return ldv_undef_int_negative();
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_CHANGE_STATE At the beginning nothing is allocated. */
+int ldv_alloc_count = 0;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_alloc') Allocate a "memory". */
+void ldv_alloc(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE One more "memory" is allocated. */
+  ldv_alloc_count++;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_free') Free a "memory". */
+void ldv_free(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Free a "memory". */
+  ldv_alloc_count--;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') All allocated memory should be freed at the end. */
+void ldv_check_final_state(void)
+{
+  /* LDV_COMMENT_ASSERT Nothing should be allocated at the end. */
+  ldv_assert(ldv_alloc_count == 0);
+}
+
+}

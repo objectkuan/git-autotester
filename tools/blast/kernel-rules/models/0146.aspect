@@ -1,0 +1,257 @@
+before: file("$this")
+{
+#include <verifier/rcv.h>
+
+extern void ldv_rcu_inc( void );
+extern void ldv_rcu_bh_inc( void );
+extern void ldv_rcu_sched_inc( void );
+extern void ldv_srcu_inc( void );
+
+extern void ldv_rcu_dec( void );
+extern void ldv_rcu_bh_dec( void );
+extern void ldv_rcu_sched_dec( void );
+extern void ldv_srcu_dec( void );
+
+}
+
+
+around: execution( static inline void rcu_read_lock( void ) )
+{
+   ldv_rcu_inc();
+}
+
+around: execution( static inline void rcu_read_unlock( void ) )
+{
+   ldv_rcu_dec();
+}
+
+
+/* rcu_bh */
+around: execution( static inline void rcu_read_lock_bh( void ) )
+{
+   ldv_rcu_bh_inc();
+}
+
+around: execution( static inline void rcu_read_unlock_bh( void ) )
+{
+   ldv_rcu_bh_dec();
+}
+
+
+/* rcu_sched */
+around: execution( static inline void rcu_read_lock_sched( void ) )
+{
+   ldv_rcu_sched_inc();
+}
+
+around: execution( static inline void rcu_read_unlock_sched( void ) )
+{
+    ldv_rcu_sched_dec();
+}
+
+
+/* srcu */
+around: execution( static inline int srcu_read_lock( struct srcu_struct *sp ) )
+{
+   ldv_srcu_inc();
+   return ldv_undef_int();
+}
+
+around: execution( static inline void srcu_read_unlock( struct srcu_struct *sp, int idx ) )
+{
+   ldv_srcu_dec();
+}
+
+
+after: file ("$this")
+{
+#include <verifier/rcv.h>
+
+#define LDV_RCU 1
+#define LDV_RCU_BH 2
+#define LDV_RCU_SCHED 3
+#define LDV_RCU_SRCU 4
+
+/* LDV_COMMENT_MODEL_STATE Indicates the level of rcu lock nesting.*/
+int ldv_rcu_value_level = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 1 level of rcu lock type.*/
+int ldv_rcu_v1 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 2 level of rcu lock type.*/
+int ldv_rcu_v2 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 3 level of rcu lock type.*/
+int ldv_rcu_v3 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 4 level of rcu lock type.*/
+int ldv_rcu_v4 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 5 level of rcu lock type.*/
+int ldv_rcu_v5 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 6 level of rcu lock type.*/
+int ldv_rcu_v6 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 7 level of rcu lock type.*/
+int ldv_rcu_v7 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 8 level of rcu lock type.*/
+int ldv_rcu_v8 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 9 level of rcu lock type.*/
+int ldv_rcu_v9 = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the 10 level of rcu lock type.*/
+int ldv_rcu_v10 = 0;
+
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_inc') Entry in rcu_read_lock/unlock section.*/
+void ldv_rcu_inc(void)
+{
+   /* LDV_COMMENT_CHANGE_STATE Push to stack rcu_lock*/
+   ldv_rcu_push(LDV_RCU);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_dec') Exit from rcu_read_lock/unlock section.*/
+void ldv_rcu_dec(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Pop from stack*/
+  /* LDV_COMMENT_ASSERT checks the last opened rcu_lock was pure rcu_lock.*/
+   ldv_assert(ldv_rcu_pop() == LDV_RCU);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_bh_inc') Entry in rcu_read_lock_bh/unlock_bh section.*/
+void ldv_rcu_bh_inc(void)
+{
+   /* LDV_COMMENT_CHANGE_STATE Push to stack rcu_lock_bh*/
+   ldv_rcu_push(LDV_RCU_BH);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_bh_dec') Exit from rcu_read_lock_bh/unlock_bh section.*/
+void ldv_rcu_bh_dec(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Pop from stack*/
+  /* LDV_COMMENT_ASSERT checks the last opened rcu_lock was rcu_lock_bh.*/
+   ldv_assert(ldv_rcu_pop() == LDV_RCU_BH);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_sched_inc') Entry in rcu_read_lock_sched/unlock_sched section.*/
+void ldv_rcu_sched_inc(void)
+{
+   /* LDV_COMMENT_CHANGE_STATE Push to stack rcu_lock_sched*/
+   ldv_rcu_push(LDV_RCU_SCHED);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_sched_dec') Exit from rcu_read_lock_sched/unlock_sched section.*/
+void ldv_rcu_sched_dec(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Pop from stack*/
+  /* LDV_COMMENT_ASSERT checks the last opened rcu_lock was rcu_lock_sched.*/
+   ldv_assert(ldv_rcu_pop() == LDV_RCU_SCHED);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_srcu_inc') Entry in srcu_read_lock/unlock section.*/
+void ldv_srcu_inc(void)
+{
+   /* LDV_COMMENT_CHANGE_STATE Push to stack srcu_lock*/
+   ldv_rcu_push(LDV_RCU_SRCU);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_srcu_dec') Exit from srcu_read_lock/unlock section.*/
+void ldv_srcu_dec(void)
+{
+  /* LDV_COMMENT_CHANGE_STATE Pop from stack*/
+  /* LDV_COMMENT_ASSERT checks the last opened rcu_lock was srcu_lock.*/
+   ldv_assert(ldv_rcu_pop() == LDV_RCU_SRCU);
+}
+
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') Checks that all rcu_lock/unlock sections closed.*/
+void ldv_check_final_state( void )
+{
+  /* LDV_COMMENT_ASSERT checks the level of opened rcu_lock/unlock sections.*/
+  ldv_assert(ldv_rcu_value_level == 0);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_push') Pushing opened section to LDV RCU stack.*/
+void ldv_rcu_push(int v)
+{
+  /* LDV_COMMENT_ASSERT checks the max level of opened rcu_lock/unlock sections.*/
+  ldv_assert(++ldv_rcu_value_level <= 10);
+  switch( ldv_rcu_value_level ){
+    case 1:
+      ldv_rcu_v1 = v;
+      break;
+    case 2:
+      ldv_rcu_v2 = v;
+      break;
+    case 3:
+      ldv_rcu_v3 = v;
+      break;
+    case 4:
+      ldv_rcu_v4 = v;
+      break;
+    case 5:
+      ldv_rcu_v5 = v;
+      break;
+    case 6:
+      ldv_rcu_v6 = v;
+      break;
+    case 7:
+      ldv_rcu_v7 = v;
+      break;
+    case 8:
+      ldv_rcu_v8 = v;
+      break;
+    case 9:
+      ldv_rcu_v9 = v;
+      break;
+    case 10:
+      ldv_rcu_v10 = v;
+      break;
+  }
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_pop') Pop last opened section from LDV RCU stack.*/
+int ldv_rcu_pop()
+{ 
+  /* LDV_COMMENT_ASSERT checks the min level of opened rcu_lock/unlock sections.*/
+  ldv_assert(ldv_rcu_value_level > 0);
+  int result;
+  switch( ldv_rcu_value_level ){
+    case 1:
+      result = ldv_rcu_v1;
+      ldv_rcu_v1 = 0;
+      break;
+    case 2:
+      result = ldv_rcu_v2;
+      ldv_rcu_v2 = 0;
+      break;
+    case 3:
+      result = ldv_rcu_v3;
+      ldv_rcu_v3 = 0;
+      break;
+    case 4:
+      result = ldv_rcu_v4;
+      ldv_rcu_v4 = 0;
+      break;
+    case 5:
+      result = ldv_rcu_v5;
+      ldv_rcu_v5 = 0;
+      break;
+    case 6:
+      result = ldv_rcu_v6;
+      ldv_rcu_v6 = 0;
+      break;
+    case 7:
+      result = ldv_rcu_v7;
+      ldv_rcu_v7 = 0;
+      break;
+    case 8:
+      result = ldv_rcu_v8;
+      ldv_rcu_v8 = 0;
+      break;
+    case 9:
+      result = ldv_rcu_v9;
+      ldv_rcu_v9 = 0;
+      break;
+    case 10:
+      result = ldv_rcu_v10;
+      ldv_rcu_v10 = 0;
+      break;
+  }
+  --ldv_rcu_value_level;
+  return result;
+}
+}

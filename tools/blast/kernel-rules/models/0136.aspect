@@ -1,0 +1,97 @@
+before: file("$this")
+{
+	#include <linux/tty.h>
+	#include <linux/usb.h>
+	#include <linux/usb/serial.h>
+
+	// Provide model function prototype before their usage.
+	void ldv_s_reg(int res);
+	void ldv_reg(int res);
+	void ldv_der(void);
+	void ldv_s_der(void);
+}
+
+after: call (int usb_serial_register(..))
+{
+	ldv_s_reg($res);
+}
+
+after: call (int usb_register(..)) || call (int usb_register_driver(..))
+{
+	ldv_reg($res);
+}
+
+before: call (void usb_deregister(..))
+{
+	ldv_der();
+}
+
+before: call (void usb_serial_deregister(..))
+{
+	ldv_s_der();
+}
+
+after: file ("$this")
+{
+	#include <verifier/rcv.h>
+
+	//States of device
+	enum
+	{
+		USB_ZERO_STATE,		//	The device is plugged out
+		USB_SERIAL_REG,		//	The device is plugged in by usb_serial_register()
+		USB_REG,		//	The device is plugged in by usb_register()	
+		USB_SERIAL_DEREG,	//	There was usb_serial_deregister() calling
+		USB_DEREG		//	There was usb_deregister() calling
+	};
+
+	/* LDV_COMMENT_CHANGE_STATE At the beginning the device is plugged out. */
+	int ldv_usb = USB_ZERO_STATE;
+	/* LDV_COMMENT_CHANGE_STATE At the beginning the device is plugged out. */
+	int ldv_usb_s = USB_ZERO_STATE;
+	
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_s_reg') usb_serial_register() was called. */
+	void ldv_s_reg(int res)
+	{
+		if (!res)
+			/* LDV_COMMENT_CHANGE_STATE change the state of device. */
+			ldv_usb_s = USB_SERIAL_REG;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_reg') usb_register() was called. */
+	void ldv_reg(int res)	
+	{
+		if (!res) 
+			/* LDV_COMMENT_CHANGE_STATE change the state of device. */
+			ldv_usb = USB_REG;	
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_der') usb_register() should be called before usb_deregister(). */	
+	ldv_der(void)
+	{
+		/* LDV_COMMENT_ASSERT usb_deregister() should be called after usb_register(). */
+		ldv_assert(ldv_usb == USB_REG);
+		/* LDV_COMMENT_CHANGE_STATE . */
+		ldv_usb = USB_ZERO_STATE;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_s_der') Check, that usb_serial_deregister() is called only after usb_deregister(). */
+	ldv_s_der(void)
+	{
+		/* LDV_COMMENT_ASSERT usb_serial_deregister() should be called after usb_deregister(). */
+		ldv_assert(ldv_usb == USB_ZERO_STATE);
+		/* LDV_COMMENT_ASSERT usb_serial_deregister() should be called after usb_serial_register(). */
+		ldv_assert(ldv_usb_s == USB_SERIAL_REG);
+		/* LDV_COMMENT_CHANGE_STATE The primary state. */
+		ldv_usb_s = USB_ZERO_STATE;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') . */
+	void ldv_check_final_state(void)
+	{
+		/* LDV_COMMENT_ASSERT device should be plugged off. */
+		ldv_assert(ldv_usb == USB_ZERO_STATE);
+		/* LDV_COMMENT_ASSERT device should be plugged off. */
+		ldv_assert(ldv_usb_s == USB_ZERO_STATE);
+	}
+}

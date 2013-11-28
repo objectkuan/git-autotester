@@ -1,0 +1,149 @@
+@include <kernel-model/ERR.aspect>
+
+before: file ("$this")
+{
+	#include <linux/kernel.h>
+	#include <linux/spinlock.h>
+
+	void ldv_spin_lock_check(void);
+	void ldv_spin_lock_init(void);
+}
+
+around: define(spin_lock_init(_lock))
+{
+	ldv_spin_lock_init()
+}
+
+after: call (void videobuf_queue_vmalloc_init(..))
+{
+	ldv_spin_lock_init();
+}
+
+before: execution (static inline void spin_lock(..))
+	|| execution (static inline void spin_unlock(..))
+	|| execution (static inline void spin_lock_bh(..))
+	|| execution (static inline void spin_unlock_bh(..))
+	|| execution (static inline void spin_lock_irq(..))
+	|| execution (static inline void spin_unlock_irq(..))
+	|| execution (static inline int spin_trylock(..))
+	|| execution (static inline int spin_trylock_bh(..))
+	|| execution (static inline int spin_trylock_irq(..))
+	|| execution (static inline void spin_unlock_wait(..))
+	|| execution (static inline int spin_is_locked(..))
+	|| execution (static inline int spin_is_contended(..))
+	|| execution (static inline int spin_can_lock(..))
+	|| execution (static inline void spin_unlock_irqrestore(..))		
+	|| execution (static inline raw_spinlock_t *spinlock_check(..))
+	|| execution (static inline void spin_unlock_wait(..))
+{
+	ldv_spin_lock_check();
+}
+
+around:	define (spin_lock(lock))	
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_unlock(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_irqsave(lock, flags))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_unlock_irqrestore(lock, flags))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_nested(lock, subclass))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_nest_lock(lock, nest_lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_irqsave_nested(lock, flags, subclass))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_trylock_irqsave(lock, flags))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_bh(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_lock_irq(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_unlock_bh(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_unlock_irq(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_trylock(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_trylock_bh(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_trylock_irq(lock))
+{
+	ldv_spin_lock_check()
+}
+
+around: define (spin_unlock_wait(lock))
+{
+	ldv_spin_lock_check()
+}
+
+after: file ("$this")
+{
+	#include <linux/kernel.h>
+	#include <linux/spinlock.h>
+
+	#include <verifier/rcv.h>
+	#include <kernel-model/ERR.inc>
+
+	/* At the beginning there is no any initialization */
+	int ldv_init = 0;
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_spin_lock_init'). Change the variable ldv_init, if there wasn't initialization*/
+	void ldv_spin_lock_init(void)
+	{
+		/* LDV_COMMENT_ASSERT If it isn't initialized, we should assign a value to it*/
+		if (ldv_init == 0)
+			/* LDV_COMMENT_CHANGE_STATE*/
+			ldv_init = 1;
+	}
+
+	/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_spin_lock_check'). Check the initialization */
+	void ldv_spin_lock_check(void)
+	{
+		/* LDV_COMMENT_ASSERT */
+		ldv_assert(ldv_init == 1);
+	}
+
+}

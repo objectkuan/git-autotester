@@ -1,0 +1,193 @@
+before: file("$this")
+{
+
+#include <verifier/rcv.h>
+
+  extern void ldv_rcu_inc( void );
+  extern void ldv_rcu_bh_inc( void );
+  extern void ldv_rcu_sched_inc( void );
+  extern void ldv_srcu_inc( void );
+
+  extern void ldv_rcu_dec( void );
+  extern void ldv_rcu_bh_dec( void );
+  extern void ldv_rcu_sched_dec( void );
+  extern void ldv_srcu_dec( void );
+
+  extern void ldv_check_for_read_section( void );
+
+}
+
+
+around: execution( static inline void rcu_read_lock( void ) )
+{
+  ldv_rcu_inc();
+}
+
+around: execution( static inline void rcu_read_unlock( void ) )
+{
+  ldv_rcu_dec();
+}
+
+
+/* rcu_bh */
+around: execution( static inline void rcu_read_lock_bh( void ) )
+{
+  ldv_rcu_bh_inc();
+}
+
+around: execution( static inline void rcu_read_unlock_bh( void ) )
+{
+  ldv_rcu_bh_dec();
+}
+
+
+/* rcu_sched */
+around: execution( static inline void rcu_read_lock_sched( void ) )
+{
+  ldv_rcu_sched_inc();
+}
+
+around: execution( static inline void rcu_read_unlock_sched( void ) )
+{
+  ldv_rcu_sched_dec();
+}
+
+
+/* srcu */
+around: execution( static inline int srcu_read_lock( struct srcu_struct *sp ) )
+{
+  ldv_srcu_inc();
+  return ldv_undef_int();
+}
+
+around: execution( static inline void srcu_read_unlock( struct srcu_struct *sp, int idx ) )
+{
+  ldv_srcu_dec();
+}
+
+around: define( rcu_assign_pointer(gptr, p) )
+{
+  ({
+     ldv_check_for_read_section();
+     gptr = ldv_undef_ptr();
+  })
+}
+
+around: call(void synchronize_rcu(void)) ||
+	call(void synchronize_rcu_bh(void)) ||
+	call(void synchronize_srcu(struct srcu_struct *sp)) ||
+	call(void synchronize_sched(void)) ||
+	call(void rcu_barrier(void)) ||
+	call(void rcu_barrier_bh(void)) ||
+	call(void rcu_barrier_sched(void)) ||
+	call(void srcu_barrier(struct srcu_struct *sp)) ||
+	call(void call_rcu(..)) ||
+	call(void call_rcu_bh(..)) ||
+	call(void call_rcu_sched(..)) ||
+	call(void call_srcu(..)) ||
+	call(static inline void list_add_rcu(..)) ||
+	call(static inline void list_add_tail_rcu(..)) ||
+	call(static inline void list_del_rcu(..)) ||
+	call(static inline void list_replace_rcu(..)) ||
+	call(static inline void hlist_replace_rcu(..)) ||
+	call(static inline void hlist_del_rcu(..)) ||
+	call(static inline void hlist_add_head_rcu(..)) ||
+	call(static inline void hlist_add_after_rcu(..)) ||
+	call(static inline void list_splice_init_rcu(..)) ||
+	call(void __list_add_rcu(..))
+{
+  ldv_check_for_read_section();
+}
+
+
+after: file ("$this")
+{
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_STATE Indicates the level of rcu_lock nesting.*/
+int ldv_rcu_nested = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the level of rcu_lock_bh nesting.*/
+int ldv_rcu_bh_nested = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the level of rcu_lock_sched nesting.*/
+int ldv_rcu_sched_nested = 0;
+/* LDV_COMMENT_MODEL_STATE Indicates the level of srcu_lock nesting.*/
+int ldv_srcu_nested = 0;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_inc') Entry in rcu_read_lock/unlock section.*/
+void ldv_rcu_inc( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Increments the level of rcu_read_lock nesting.*/
+   ++ldv_rcu_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_dec') Exit from rcu_read_lock/unlock section.*/
+void ldv_rcu_dec( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Decrements the level of rcu_read_lock nesting.*/
+   --ldv_rcu_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_bh_inc') Entry in rcu_read_lock_bh/unlock_bh section.*/
+void ldv_rcu_bh_inc( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Increments the level of rcu_read_lock_bh nesting.*/
+   ++ldv_rcu_bh_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_bh_dec') Exit from rcu_read_lock_bh/unlock_bh section.*/
+void ldv_rcu_bh_dec( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Decrements the level of rcu_read_lock_bh nesting.*/
+   --ldv_rcu_bh_nested;
+}
+
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_sched_inc') Entry in rcu_read_lock_sched/unlock_sched section.*/
+void ldv_rcu_sched_inc( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Increments the level of rcu_read_lock_sched nesting.*/
+   ++ldv_rcu_sched_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_rcu_sched_dec') Exit from rcu_read_lock_sched/unlock_sched section.*/
+void ldv_rcu_sched_dec( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Decrements the level of rcu_read_lock_sched nesting.*/
+   --ldv_rcu_sched_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_srcu_inc') Entry in srcu_read_lock/unlock section.*/
+void ldv_srcu_inc( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Increments the level of srcu_read_lock nesting.*/
+   ++ldv_srcu_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_srcu_dec') Exit from srcu_read_lock/unlock section.*/
+void ldv_srcu_dec( void )
+{
+   /* LDV_COMMENT_CHANGE_STATE Decrements the level of srcu_read_lock nesting.*/
+   --ldv_srcu_nested;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_for_read_section') Checks that no one opened rcu_lock/unlock section.*/
+void ldv_check_for_read_section( void )
+{
+   /* LDV_COMMENT_ASSERT checks the count of opened rcu_lock/unlock sections.*/
+   ldv_assert( ldv_rcu_nested == 0 );
+   /* LDV_COMMENT_ASSERT checks the count of opened rcu_lock_bh/unlock_bh sections.*/
+   ldv_assert( ldv_rcu_bh_nested == 0 );
+   /* LDV_COMMENT_ASSERT checks the count of opened rcu_lock_sched/unlock_sched sections.*/
+   ldv_assert( ldv_rcu_sched_nested == 0 );
+   /* LDV_COMMENT_ASSERT checks the count of opened srcu_lock/unlock sections.*/
+   ldv_assert( ldv_srcu_nested == 0 );
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') Checks that all rcu_lock/unlock sections closed.*/
+void ldv_check_final_state( void )
+{
+    ldv_check_for_read_section();
+}
+
+
+}

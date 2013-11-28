@@ -1,0 +1,84 @@
+@include <kernel-model/ERR.aspect>
+
+before: file ("$this")
+{
+#include <linux/netdevice.h>
+
+struct net_device *ldv_ERR_undef_ptr(void);
+void ldv_IS_ERR_assert(void);
+void ldv_IS_ERR_OR_NULL_assert(void);
+void ldv_PTR_ERR_assert(int ret);
+void ldv_ERR_PTR_assert(struct net_device *ret);
+}
+
+around: call(static struct net_device *ERR_undef_ptr(..))
+{
+	return ldv_ERR_undef_ptr();
+}
+
+around: define(IS_ERR_assert(ret))
+{
+	ldv_IS_ERR_assert()
+}
+
+around: define(IS_ERR_OR_NULL_assert(ret))
+{
+	ldv_IS_ERR_OR_NULL_assert()
+}
+
+around: define(PTR_ERR_assert(ret))
+{
+	ldv_PTR_ERR_assert(ret)
+}
+
+around: define(ERR_PTR_assert(ret))
+{
+	ldv_ERR_PTR_assert(ret)
+}
+
+new: file(LDV_COMMON_MODEL)
+{
+#include <linux/netdevice.h>
+
+#include <verifier/rcv.h>
+#include <kernel-model/ERR.inc>
+struct net_device *ldv_ERR_value;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_ERR_undef_ptr') Returns random pointer */
+struct net_device *ldv_ERR_undef_ptr(void)
+{
+	void *p = ldv_undef_ptr();
+	ldv_ERR_value = (struct net_device *)p;
+/* LDV_COMMENT_RETURN Returns random pointer */
+	return ldv_ERR_value;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_IS_ERR_assert') Checks that IS_ERR() was modeled */
+void ldv_IS_ERR_assert(void)
+{
+/* LDV_COMMENT_ASSERT ldv_ERR_value should not be error pointer */
+	ldv_assert((unsigned long)ldv_ERR_value <= LDV_PTR_MAX);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_IS_ERR_OR_NULL_assert') Checks that IS_ERR_OR_NULL() was modeled */
+void ldv_IS_ERR_OR_NULL_assert(void)
+{
+/* LDV_COMMENT_ASSERT ldv_ERR_value should not be error pointer and should not be NULL */
+	ldv_assert(((unsigned long)ldv_ERR_value <= LDV_PTR_MAX) && (ldv_ERR_value != NULL));
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_PTR_ERR_assert') Checks that PTR_ERR() was modeled */
+void ldv_PTR_ERR_assert(int ret)
+{
+/* LDV_COMMENT_ASSERT PTR_ERR should return negative error code */
+	ldv_assert(ret < 0);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_ERR_PTR_assert') Checks that ERR_PTR() was modeled */
+void ldv_ERR_PTR_assert(struct net_device * ret)
+{
+/* LDV_COMMENT_ASSERT ERR_PTR should not return NULL*/
+	ldv_assert(ret != NULL);
+}
+
+}

@@ -1,0 +1,36 @@
+before: file("$this")
+{
+
+#include <verifier/rcv.h>
+
+// Provide model function prototypes before their usage.
+void ldv_check_callback_ret_val(int ret_val);
+}
+
+after: call(static int slip_open(..))
+{
+  ldv_check_callback_ret_val($res);
+}
+
+// These functions are called from inside slip_open and aren't defined. So we
+// need at least some minimalistic knowledge about them, say, that they also
+// should return non positive integer numbers.
+after: call(int register_netdevice(..)) || call(static int sl_alloc_bufs(..))
+{
+  return ldv_undef_int_nonpositive();
+}
+
+
+after: file ("$this")
+{
+
+#include <verifier/rcv.h>
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_callback_ret_val') Check that callback finishes either successfully (returns 0) or with an error (returns negative integer). */
+void ldv_check_callback_ret_val(int ret_val)
+{
+  /* LDV_COMMENT_ASSERT Callback return value should not be greater then 0. */
+  ldv_assert(ret_val <= 0);
+}
+
+}

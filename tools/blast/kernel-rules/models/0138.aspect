@@ -1,0 +1,55 @@
+before: file("$this")
+{
+  void ldv_netif_napi_add(void);
+  void ldv_netif_napi_del(void);
+  void ldv_free_netdev(void);
+}
+
+before: call (void netif_napi_add(..))
+{
+  ldv_netif_napi_add();
+}
+
+before: call (void netif_napi_del(..))
+{
+  ldv_netif_napi_del();
+}
+
+before: call (void free_netdev(..))
+  || call (void free_candev(..))
+{
+  ldv_free_netdev();
+}
+
+
+after: file ("$this")
+{
+  #include <verifier/rcv.h>
+
+  int ldv_napi_counter = 0;
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_netif_napi_add') Increases napi counter */
+  void ldv_netif_napi_add(void)
+  {
+    ldv_napi_counter++;
+  }
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_netif_napi_del') Decreases napi counter */
+  void ldv_netif_napi_del(void)
+  {
+    ldv_napi_counter--;
+  }
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_free_netdev') Resets napi counter */
+  void ldv_free_netdev(void)
+  {
+    ldv_napi_counter = 0;
+  }
+
+  /* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_final_state') Napi counter must be equal zero at the end */
+  void ldv_check_final_state(void)
+  {
+    ldv_assert(ldv_napi_counter == 0);
+  }  
+}
+

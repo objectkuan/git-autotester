@@ -1,0 +1,146 @@
+@include <kernel-model/alloc.aspect>
+
+before: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+
+extern void ldv_usb_lock_device(void);
+extern void ldv_usb_unlock_device(void);
+extern int ldv_usb_trylock_device(void);
+extern int ldv_usb_lock_device_for_reset(void);
+
+extern void ldv_check_alloc_flags(gfp_t flags);
+extern struct page *ldv_check_alloc_flags_and_return_some_page(gfp_t flags);
+extern void ldv_check_alloc_nonatomic(void); 
+}
+
+
+before: ALLOC
+{
+  ldv_check_alloc_flags(flags);
+}
+
+around: ALLOC_AROUND
+{
+  ldv_check_alloc_flags(flags);
+}
+
+before: ALLOC_WITHOUT
+{
+  ldv_check_alloc_nonatomic();
+}
+
+around: alloc_pages
+{
+  ldv_check_alloc_flags_and_return_some_page(gfp_mask);
+}
+
+around: alloc_page_vma
+{
+  ldv_check_alloc_flags_and_return_some_page(gfp_mask);
+}
+
+
+
+around: call(int usb_lock_device_for_reset(..))
+{
+  return ldv_usb_lock_device_for_reset();
+}
+
+around: define(usb_lock_device(udev))
+{
+  ldv_usb_lock_device()
+}
+
+around: define(usb_unlock_device(udev))
+{
+  ldv_usb_unlock_device()
+}
+
+around: define(usb_trylock_device(udev))
+{
+  ldv_usb_trylock_device()
+}
+ 
+
+after: file ("$this")
+{
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+
+#include <verifier/rcv.h>
+
+struct page *ldv_some_page(void);
+
+/* LDV_COMMENT_MODEL_STATE Usb lock state = free*/
+int ldv_lock = 1;
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_flags') Check that a memory allocation function function was called with a correct value of flags (in usb locking)*/
+void ldv_check_alloc_flags(gfp_t flags) 
+{
+/* LDV_COMMENT_ASSERT If usb lock is locked (ldv_lock = 2) then a memory allocating function should be called with flags equals to GFP_ATOMIC or GFP_NOIO*/
+	if (ldv_lock == 2)
+		ldv_assert(flags == GFP_NOIO || flags == GFP_ATOMIC);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_nonatomic') Check that a memory allocation function function was called with a correct value of flags (in usb locking) */
+void ldv_check_alloc_nonatomic(void)
+{
+/* LDV_COMMENT_ASSERT If usb lock is locked (ldv_lock = 2) then a memory allocating function should be called with flags equals to GFP_ATOMIC or GFP_NOIO*/
+	if (ldv_lock == 2)
+		ldv_assert(0);
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_check_alloc_flags_and_return_some_page') Check that a alloc_pages function was called with a correct value of flags (in usb locking)*/
+struct page *ldv_check_alloc_flags_and_return_some_page(gfp_t flags)
+{
+	if (ldv_lock == 2)
+		ldv_assert(flags == GFP_NOIO || flags == GFP_ATOMIC);
+/* LDV_COMMENT_RETURN Return a page pointer (maybe NULL). */
+	return ldv_some_page();
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_lock_device') Acquires the usb lock and checks for double usb lock*/
+void ldv_usb_lock_device(void)
+{
+/* LDV_COMMENT_CHANGE_STATE Go to locked state*/
+	ldv_lock = 2;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_trylock_device') Tries to acquire the usb lock and returns 1 if successful*/
+int ldv_usb_trylock_device(void)
+{
+	if(ldv_lock == 1 && ldv_undef_int()) {
+/* LDV_COMMENT_CHANGE_STATE Goto locked state*/
+		ldv_lock = 2;
+/* LDV_COMMENT_RETURN Usb lock is acquired*/
+		return 1;
+	} else
+/* LDV_COMMENT_RETURN Usb lock is not acquired*/
+	return 0;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_lock_device_for_reset') Tries to acquire the usb lock and returns 0 if successful*/
+int ldv_usb_lock_device_for_reset(void)
+{
+	if(ldv_lock == 1 && ldv_undef_int()) {
+/* LDV_COMMENT_CHANGE_STATE Goto locked state*/
+	ldv_lock = 2;
+/* LDV_COMMENT_RETURN Usb lock is acquired*/
+	return 0;
+	} else
+/* LDV_COMMENT_RETURN Usb lock is not acquired*/
+	return -1;
+}
+
+/* LDV_COMMENT_MODEL_FUNCTION_DEFINITION(name='ldv_usb_unlock_device') Releases the usb lock and checks that usb lock was acquired before*/
+void ldv_usb_unlock_device(void) {
+/* LDV_COMMENT_CHANGE_STATE Go to free state*/
+	ldv_lock = 1;
+}
+
+
+}

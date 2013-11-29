@@ -12,10 +12,14 @@ ANALYSIS_DIR=${LINUX_DIR}/drivers/tty/vt
 RULESFILE=${MY_BLAST}/kernel-rules/models/0008.aspect
 
 export PATH=$PATH:${LDV_HOME}/bin:${LDV_HOME}/dscv/rcv/backends/blast/bin
-OUT_DIR=${MY_BLAST}/blast-out
-RESULT_DIR=${MY_BLAST}/blast-result
+OUT_DIR=${MY_BLAST}/blast-out/${LINUX_DIR##*/}
 COMMON_MODEL=${OUT_DIR}/ldv_common_model.c
-mkdir -p ${OUT_DIR} ${RESULT_DIR}
+mkdir -p ${OUT_DIR}
+
+cd ${LINUX_DIR}
+make allyesconfig > /dev/null
+make init > /dev/null
+cd -
 
 find ${ANALYSIS_DIR} -name "*.c" | \
 	while read IN_C
@@ -47,16 +51,20 @@ find ${ANALYSIS_DIR} -name "*.c" | \
 
 				if [ -f ${TRACES} ]
 				then
-					echo "***************************"
+					echo "***begin*******************"
 					echo ERROR:FILENAME:${IN_C}
 					echo ERROR:RULES:${RULESNAME}
 					echo ERROR:RULESNAME:${NAME}
 					echo ERROR:RULESTITLE:${TITLE}
 					echo ERROR:RULESSUMMARY:${SUMMARY}
 					echo ERROR:TRACES:${TRACES}
-					echo "***************************"
+					echo "***end*********************"
 				fi
 			done
 		echo BLAST:end analysis ${IN_C}
 		echo ===========================
 	done
+
+cd ${LINUX_DIR}
+make mrproper > /dev/null
+cd -

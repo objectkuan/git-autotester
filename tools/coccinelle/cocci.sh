@@ -21,12 +21,16 @@ function in_black()
     return 0;
 }
 
-for f in `find scripts/coccinelle/ -name '*.cocci' -type f | sort`; do
-    exist=$(in_black $f);
-    if [ "$?" = "0" ]; then
-	date
-        echo "###### $f"
-        make coccicheck MODE=report COCCI=$f
-    fi
-done
+COCCI=api/memdup_user.cocci
+DIR=drivers/net
 
+#for f in `find scripts/coccinelle/ -name '*.cocci' -type f | sort`; do
+#    exist=$(in_black $f);
+#    if [ "$?" = "0" ]; then
+#	date
+#        echo "###### $f"
+#        make coccicheck MODE=report COCCI=$f
+#    fi
+#done
+
+make coccicheck MODE=report M=$DIR COCCI=scripts/coccinelle/$COCCI

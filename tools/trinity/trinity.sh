@@ -36,8 +36,8 @@ then
 	echo "[trinityTest] bzImage   ready..."
 else
 	echo "[trinityTest] $bzImage not exist, making bzImage..."
-	make ARCH=i386 defconfig
-	make ARCH=i386 bzImage -j `cat /proc/cpuinfo |grep processor|wc -l`
+	make ARCH=i386 defconfig 2>/tmp/1 >/tmp/1
+	make ARCH=i386 bzImage -j `cat /proc/cpuinfo |grep processor|wc -l` 2>/tmp/1 >/tmp/1
 	if [ -f $bzImage ]
 	then
 		echo "[trinityTest] bzImage ready..."
@@ -49,6 +49,7 @@ else
 fi
 
 echo "[trinityTest] img_trinity:$img_trinity"
+echo "[trinityTest] Result:"
 
 #查找是否存在可用的测试镜像，没有就拷贝一个过来
 if [ -f "`find ./ -name "*debian7.2.trinity.qcow2"`" ]
@@ -64,4 +65,4 @@ ${thisfile_dir}/timer.sh ${img_used} 240 &
 qemu-system-i386 -kernel $bzImage -hda $img_used -append "root=/dev/sda1 console=ttyS0,115200n8 console=tty0" -serial stdio -vnc :33
 
 #收尾
-make mrproper
+make mrproper 2>/tmp/1 >/tmp/1

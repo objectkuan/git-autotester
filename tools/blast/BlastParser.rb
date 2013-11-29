@@ -36,28 +36,28 @@ class ResultParser
           end
           m = rules_pat.match(r)
           if(m)
-            item[:toolDescription] = item[:toolDescription] + "BLAST Rule: "
+            item[:toolDescription] = item[:toolDescription] + "\nBLAST Rule: "
             item[:toolDescription] = item[:toolDescription] + m[1]
           end
           m = rulesname_pat.match(r)
           if(m)
-            item[:toolDescription] = item[:toolDescription] + "Rule Name: "
+            item[:toolDescription] = item[:toolDescription] + "\nRule Name: "
             item[:toolDescription] = item[:toolDescription] + m[1]
             rulesname = m[1]
           end
           m = rulestitle_pat.match(r)
           if(m)
-            item[:toolDescription] = item[:toolDescription] + "Rule Title: "
+            item[:toolDescription] = item[:toolDescription] + "\nRule Title: "
             item[:toolDescription] = item[:toolDescription] + m[1]
           end
           m = rulessum_pat.match(r)
           if(m)
-            item[:toolDescription] = item[:toolDescription] + "Rule Name: "
+            item[:toolDescription] = item[:toolDescription] + "\nRule Name: "
             item[:toolDescription] = item[:toolDescription] + m[1]
           end
           m = tracefile_pat.match(r)
           if(m)
-            item[:toolDescription] = item[:toolDescription] + "Description: \n"
+            item[:toolDescription] = item[:toolDescription] + "\nDescription: \n"
             item[:toolDescription] = item[:toolDescription] + `cat #{m[1]}`
           end
         end

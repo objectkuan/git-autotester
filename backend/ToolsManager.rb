@@ -5,8 +5,7 @@ class ToolsManager
   @@tools = {}
   _tools[:tools].map  { |tool| @@tools[tool[:name]] = tool }
   @@tools.select  { |name, tool| 
-    parserPath = File.join($ROOT, tool[:result_parser]);
-    puts parserPath
+    parserPath = File.join($ROOT, tool[:result_parser])
     require(parserPath) if FileTest::exist?(parserPath)
   }
     

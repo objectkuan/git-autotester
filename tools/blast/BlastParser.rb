@@ -72,7 +72,6 @@ class ResultParser
           }
           beginning = true
         end
-                
         
       end
       parsed_result
